@@ -2,6 +2,7 @@ package dorm
 
 import (
 	"database/sql"
+	"fmt"
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -38,11 +39,21 @@ func insertUsers(conn *sql.DB, users []User) {
 }
 
 type User struct {
-	FullName  string
+	FullName string
 }
 
-var MockUsers = []User {
+var MockUsers = []User{
 	User{FullName: "Test User1"},
+}
+
+func TestString(t *testing.T) {
+	words := []string{"CamelCase", "EMail", "COSFiles", "camelCase", "OldCOSFiles", "COSFiles"}
+	for _, val := range words {
+		arr := camelToArray(val)
+		fmt.Println(val, arr)
+		fmt.Println(arrayToUnderscore(arr))
+	}
+
 }
 
 func TestFind(t *testing.T) {
@@ -54,7 +65,9 @@ func TestFind(t *testing.T) {
 	defer db.Close()
 
 	results := []User{}
+	fmt.Println("here")
 	db.Find(&results)
+	TableName(&results)
 
 	if len(results) != 1 {
 		t.Errorf("Expected 1 users but found %d", len(results))

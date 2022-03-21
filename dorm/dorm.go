@@ -2,6 +2,11 @@ package dorm
 
 import (
 	"database/sql"
+	"fmt"
+	"log"
+	"reflect"
+	"strings"
+	"unicode"
 )
 
 // DB handle
@@ -35,7 +40,19 @@ func (db *DB) Close() error {
 // }
 // ColumnNames(&MyStruct{})    ==>   []string{"id", "user_name"}
 func ColumnNames(v interface{}) []string {
-	return []string{}
+	if reflect.ValueOf(v).Kind() != reflect.Struct {
+		log.Panic("requires struct")
+	}
+	cols := []string{}
+	// placeholder:= []string{}
+	val := reflect.ValueOf(v)
+	for i := 0; i < val.NumField(); i++ {
+		colname := val.Type().Field(i).Name
+		colname_fixed := strings.ToLower(string(colname[0])) + colname[1:]
+		cols = append(cols, colname_fixed)
+	}
+
+	return cols
 }
 
 // TableName analyzes a struct, v, and returns a single string, equal
@@ -46,9 +63,17 @@ func ColumnNames(v interface{}) []string {
 // type MyStruct struct {
 //    ...
 // }
-// TableName(&MyStruct{})    ==>  "my_struct" 
+// TableName(&MyStruct{})    ==>  "my_struct"
 func TableName(result interface{}) string {
-	return ""
+	val := reflect.ValueOf(result).Kind()
+	fmt.Printf("%v", val)
+	fmt.Println(val.String())
+	if reflect.ValueOf(result).Kind() != reflect.Struct {
+		log.Panic("requires struct")
+	}
+	str := val.String()
+
+	return str
 }
 
 // Find queries a database for all rows in a given table,
@@ -64,6 +89,7 @@ func TableName(result interface{}) string {
 //    result := []UserComment{}
 //    db.Find(&result)
 func (db *DB) Find(result interface{}) {
+
 }
 
 // First queries a database for the first row in a table,
@@ -95,4 +121,82 @@ func (db *DB) First(result interface{}) bool {
 // This ID is given by the value of last_inserted_rowid(),
 // returned from the underlying sql database.
 func (db *DB) Create(model interface{}) {
+}
+
+func camelToArray(word string) []string {
+	allWords := []string{}
+
+	currentWord := ""
+	// endOfWord := false
+	beginnningOfWord := true
+	isUpper := false
+
+	for i := 0; i < len(word); i++ {
+		//currentWord += string(word[i])
+		if beginnningOfWord {
+			if i < len(word) {
+				isUpper = unicode.IsUpper(rune(word[i+1]))
+			}
+			beginnningOfWord = false
+			currentWord += string(word[i])
+		} else {
+
+			if isUpper && unicode.IsUpper(rune(word[i])) {
+				if i < len(word)-2 && !unicode.IsUpper(rune(word[i+2])) {
+					currentWord += string(word[i])
+					allWords = append(allWords, currentWord)
+					currentWord = ""
+					beginnningOfWord = true
+					continue
+
+				} else if i == len(word)-1 || unicode.IsUpper(rune(word[i+1])) {
+					currentWord += string(word[i])
+					continue
+
+				} else {
+					allWords = append(allWords, currentWord)
+					fmt.Println(currentWord)
+					currentWord = ""
+					beginnningOfWord = true
+					//allWords = append(allWords, currentWord)
+					continue
+				}
+			}
+
+			if !unicode.IsUpper(rune(word[i])) {
+				isUpper = false
+				currentWord += string(word[i])
+				continue
+			}
+			allWords = append(allWords, currentWord)
+			//fmt.Println(currentWord)
+			currentWord = ""
+			beginnningOfWord = true
+			i--
+			//allWords = append(allWords, currentWord)
+		}
+
+	}
+	allWords = append(allWords, currentWord)
+	return allWords
+
+}
+
+func arrayToUnderscore(arr []string) string {
+	fmt.Println("in to lower", len(arr), arr)
+	if len(arr) < 1 {
+		return ""
+	}
+	fmt.Println("in to lower2")
+	str := ""
+	for i := 0; i < len(arr)-1; i++ {
+		fmt.Print("in to lower3")
+		val := strings.ToLower(string(arr[i])) //+ string(arr[i][1:])
+		str += val + "_"
+		fmt.Println(str)
+	}
+	fmt.Println("in to lower4", str)
+	val := strings.ToLower(string(arr[len(arr)-1])) // + string(arr[len(arr)-1][1:])
+	str += val
+	return str
 }
