@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"regexp"
 	"strings"
 	"unicode"
 )
@@ -64,14 +65,22 @@ func ColumnNames(v interface{}) []string {
 //    ...
 // }
 // TableName(&MyStruct{})    ==>  "my_struct"
+
+var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
+var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
+
+func ToSnakeCase(str string) string {
+	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
+	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
+	return strings.ToLower(snake)
+}
+
 func TableName(result interface{}) string {
-	val := reflect.ValueOf(result).Kind()
-	fmt.Printf("%v", val)
-	fmt.Println(val.String())
+	name := reflect.TypeOf(result).Name()
 	if reflect.ValueOf(result).Kind() != reflect.Struct {
 		log.Panic("requires struct")
 	}
-	str := val.String()
+	str := ToSnakeCase(name)
 
 	return str
 }
@@ -89,7 +98,24 @@ func TableName(result interface{}) string {
 //    result := []UserComment{}
 //    db.Find(&result)
 func (db *DB) Find(result interface{}) {
+	// rows,err := db.inner.Query(query)
 
+	// defer rows.Close()
+
+	// fields := make([]interface{}, len(cols))
+	// for i := 0; i < v.NumField; i++ {
+	// 	field := reflect.New(v.Field(i).Type()).Interface()
+	// 	fields[i] = field
+	// }
+	// for rows.Next() {
+	// 	err := rows.Scan(fields...)
+	// 	if err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// 	for i := 0; i < len(fields); i++ {
+	// 		fmt.Println(reflect.ValueOf(fields[i]).Elem())
+	// 	}
+	// }
 }
 
 // First queries a database for the first row in a table,
