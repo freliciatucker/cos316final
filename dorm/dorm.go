@@ -65,15 +65,19 @@ func ColumnNames(v interface{}) []string {
 // }
 // TableName(&MyStruct{})    ==>  "my_struct"
 func TableName(result interface{}) string {
-	val := reflect.ValueOf(result).Kind()
+	val := reflect.TypeOf(result).Elem().Name()
 	fmt.Printf("%v", val)
-	fmt.Println(val.String())
-	if reflect.ValueOf(result).Kind() != reflect.Struct {
+	//fmt.Println(val.Name())
+	fmt.Printf("%v  value", reflect.ValueOf(result))
+	fmt.Printf("%v  type", reflect.TypeOf(result))
+	/*if reflect.TypeOf(result).Elem().Name() != reflect.Struct {
 		log.Panic("requires struct")
-	}
-	str := val.String()
+	}*/
 
-	return str
+	fmt.Println("passed!")
+	//str := val.String()
+
+	return arrayToUnderscore(camelToArray(val))
 }
 
 // Find queries a database for all rows in a given table,
@@ -89,6 +93,16 @@ func TableName(result interface{}) string {
 //    result := []UserComment{}
 //    db.Find(&result)
 func (db *DB) Find(result interface{}) {
+	val := reflect.ValueOf(result).Kind()
+	fmt.Printf("%v  kind", val)
+	fmt.Printf("%v  value", reflect.ValueOf(result))
+	fmt.Printf("%v  type", reflect.TypeOf(result))
+	fmt.Println(val.String())
+	if reflect.ValueOf(result).Kind() != reflect.Struct {
+		log.Panic("requires struct")
+	}
+
+	// str := val.String()
 
 }
 
