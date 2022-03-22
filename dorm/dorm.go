@@ -107,7 +107,15 @@ func (db *DB) Find(result interface{}) {
 //    ok := db.First(result)
 // with the argument), otherwise return true.
 func (db *DB) First(result interface{}) bool {
-	return false
+	tableName := TableName(result)
+	query := "SELECT * FROM " + tableName + "LIMIT 1"
+	row := db.inner.QueryRow(query)
+	switch err := row.Scan(result); err {
+	case nil:
+		return true
+	default:
+		return false
+	}
 }
 
 // Create adds the specified model to the appropriate database table.
@@ -121,6 +129,7 @@ func (db *DB) First(result interface{}) bool {
 // This ID is given by the value of last_inserted_rowid(),
 // returned from the underlying sql database.
 func (db *DB) Create(model interface{}) {
+
 }
 
 func camelToArray(word string) []string {
