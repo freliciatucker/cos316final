@@ -77,7 +77,7 @@ func ToSnakeCase(str string) string {
 
 func TableName(result interface{}) string {
 	name := reflect.TypeOf(result).Name()
-	if reflect.ValueOf(result).Kind() != reflect.Struct {
+	if reflect.TypeOf(result).Kind() != reflect.Struct {
 		log.Panic("requires struct")
 	}
 	str := ToSnakeCase(name)
