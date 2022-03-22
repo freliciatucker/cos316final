@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"reflect"
-	"regexp"
 	"strings"
 	"unicode"
 )
@@ -65,22 +64,14 @@ func ColumnNames(v interface{}) []string {
 //    ...
 // }
 // TableName(&MyStruct{})    ==>  "my_struct"
-
-var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
-var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
-
-func ToSnakeCase(str string) string {
-	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
-	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
-	return strings.ToLower(snake)
-}
-
 func TableName(result interface{}) string {
-	name := reflect.TypeOf(result).Name()
-	if reflect.TypeOf(result).Kind() != reflect.Struct {
+	val := reflect.ValueOf(result).Kind()
+	fmt.Printf("%v", val)
+	fmt.Println(val.String())
+	if reflect.ValueOf(result).Kind() != reflect.Struct {
 		log.Panic("requires struct")
 	}
-	str := ToSnakeCase(name)
+	str := val.String()
 
 	return str
 }
