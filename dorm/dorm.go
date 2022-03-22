@@ -39,7 +39,7 @@ func (db *DB) Close() error {
 // }
 // ColumnNames(&MyStruct{})    ==>   []string{"id", "user_name"}
 func ColumnNames(v interface{}) []string {
-	t := reflect.TypeOf(v)
+	t := reflect.TypeOf(v).Elem()
 	cols := make([]string, t.NumField())
 	for i := range cols {
 		cols[i] = arrayToUnderscore(camelToArray(t.Field(i).Name))
