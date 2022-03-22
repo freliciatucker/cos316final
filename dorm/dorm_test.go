@@ -42,6 +42,11 @@ type User struct {
 	FullName string
 }
 
+type User2 struct {
+	FullName string
+	eMail    string
+}
+
 var MockUsers = []User{
 	User{FullName: "Test User1"},
 }
@@ -54,6 +59,14 @@ func TestString(t *testing.T) {
 		fmt.Println(arrayToUnderscore(arr))
 	}
 
+}
+
+func TestColumnNames(t *testing.T) {
+	cols := ColumnNames(&User2{})
+	if len(cols) != 1 {
+		t.Errorf("Expected 1 col but found %d", len(cols))
+		fmt.Println(cols)
+	}
 }
 
 func TestFind(t *testing.T) {
