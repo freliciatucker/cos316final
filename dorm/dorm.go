@@ -41,7 +41,7 @@ func (db *DB) Close() error {
 func ColumnNames(v interface{}) []string {
 	t := reflect.TypeOf(v).Elem()
 	cols := []string{}
-	for i := range cols {
+	for i := 0; i < t.NumField(); i++ {
 		if t.Field(i).IsExported() {
 			cols = append(cols, arrayToUnderscore(camelToArray(t.Field(i).Name)))
 		}
