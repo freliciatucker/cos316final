@@ -3,7 +3,6 @@ package dorm
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 	"unicode"
@@ -40,16 +39,10 @@ func (db *DB) Close() error {
 // }
 // ColumnNames(&MyStruct{})    ==>   []string{"id", "user_name"}
 func ColumnNames(v interface{}) []string {
-	if reflect.ValueOf(v).Kind() != reflect.Struct {
-		log.Panic("requires struct")
-	}
-	cols := []string{}
-	// placeholder:= []string{}
-	val := reflect.ValueOf(v)
-	for i := 0; i < val.NumField(); i++ {
-		colname := val.Type().Field(i).Name
-		colname_fixed := strings.ToLower(string(colname[0])) + colname[1:]
-		cols = append(cols, colname_fixed)
+	t := reflect.TypeOf(v)
+	cols := make([]string, t.NumField())
+	for i := range cols {
+		cols[i] = arrayToUnderscore(camelToArray(t.Field(i).Name))
 	}
 
 	return cols
@@ -66,9 +59,6 @@ func ColumnNames(v interface{}) []string {
 // TableName(&MyStruct{})    ==>  "my_struct"
 func TableName(result interface{}) string {
 	val := reflect.TypeOf(result).Elem().Name()
-	// if reflect.ValueOf(result).Kind() != reflect.Struct {
-	// 	log.Panic("requires struct")
-	// }
 
 	return arrayToUnderscore(camelToArray(val))
 }
