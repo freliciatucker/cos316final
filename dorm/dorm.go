@@ -40,9 +40,11 @@ func (db *DB) Close() error {
 // ColumnNames(&MyStruct{})    ==>   []string{"id", "user_name"}
 func ColumnNames(v interface{}) []string {
 	t := reflect.TypeOf(v).Elem()
-	cols := make([]string, t.NumField())
+	cols := []string{}
 	for i := range cols {
-		cols[i] = arrayToUnderscore(camelToArray(t.Field(i).Name))
+		if t.Field(i).IsExported() {
+			cols = append(cols, arrayToUnderscore(camelToArray(t.Field(i).Name)))
+		}
 	}
 
 	return cols
