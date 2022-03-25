@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"regexp"
 	"strings"
 	"unicode"
 )
@@ -27,6 +28,15 @@ func (db *DB) Close() error {
 	return db.inner.Close()
 }
 
+var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
+var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
+
+func ToSnakeCase(str string) string {
+	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
+	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
+	return strings.ToLower(snake)
+}
+
 // ColumnNames analyzes a struct, v, and returns a list of strings,
 // one for each of the public fields of v.
 // The i'th string returned should be equal to the name of the i'th
@@ -42,9 +52,9 @@ func (db *DB) Close() error {
 func ColumnNames(v interface{}) []string {
 	t := reflect.TypeOf(v).Elem()
 	cols := []string{}
-	for i := range cols {
+	for i := 0; i < t.NumField(); i++ {
 		if t.Field(i).IsExported() {
-			cols = append(cols, arrayToUnderscore(camelToArray(t.Field(i).Name)))
+			cols = append(cols, ToSnakeCase(t.Field(i).Name))
 		}
 	}
 	return cols
@@ -72,7 +82,7 @@ func TableName(result interface{}) string {
 	fmt.Println("passed!")
 	//str := val.String()
 
-	return arrayToUnderscore(camelToArray(val))
+	return ToSnakeCase(val)
 }
 
 // Find queries a database for all rows in a given table,
