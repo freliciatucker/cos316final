@@ -24,6 +24,8 @@ func createUserTable(conn *sql.DB) {
 	if err != nil {
 		panic(err)
 	}
+	// res, err := conn.Query("SELECT name FROM sqlite_schema WHERE type ='table' AND name NOT LIKE 'sqlite_%';")
+	// fmt.Println("in connect so shouldd work", res, err)
 }
 
 func insertUsers(conn *sql.DB, users []User) {
@@ -72,4 +74,39 @@ func TestFind(t *testing.T) {
 	// if len(results) != 1 {
 	// 	t.Errorf("Expected 1 users but found %d", len(results))
 	// }
+}
+
+func TestCreate(t *testing.T) {
+	conn := connectSQL()
+	createUserTable(conn)
+
+	insertUsers(conn, MockUsers)
+
+	db := NewDB(conn)
+	res, _ := db.inner.Query("SELECT * FROM user;")
+	cols, err := res.ColumnTypes()
+	fmt.Println("tbales plz", &cols, cols[len(cols)-1].Name(), cols[0].Name(), err)
+	defer db.Close()
+
+	//results := MockUsers
+	// fmt.Println("here")
+	db.Create(&User{FullName: "Frelicia"})
+	//ColumnNames(&results)
+}
+
+func TestKey(t *testing.T) {
+	conn := connectSQL()
+	createUserTable(conn)
+
+	insertUsers(conn, MockUsers)
+
+	db := NewDB(conn)
+	res, _ := db.inner.Query("SHOW TABLES")
+	fmt.Println("tbales plz", res)
+	defer db.Close()
+
+	//results := MockUsers
+	// fmt.Println("here")
+	db.Create(&User{FullName: "Frelicia "})
+	//ColumnNames(&results)
 }
