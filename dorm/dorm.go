@@ -40,18 +40,13 @@ func (db *DB) Close() error {
 // }
 // ColumnNames(&MyStruct{})    ==>   []string{"id", "user_name"}
 func ColumnNames(v interface{}) []string {
-	if reflect.ValueOf(v).Kind() != reflect.Struct {
-		log.Panic("requires struct")
-	}
+	t := reflect.TypeOf(v).Elem()
 	cols := []string{}
-	// placeholder:= []string{}
-	val := reflect.ValueOf(v)
-	for i := 0; i < val.NumField(); i++ {
-		colname := val.Type().Field(i).Name
-		colname_fixed := strings.ToLower(string(colname[0])) + colname[1:]
-		cols = append(cols, colname_fixed)
+	for i := range cols {
+		if t.Field(i).IsExported() {
+			cols = append(cols, arrayToUnderscore(camelToArray(t.Field(i).Name)))
+		}
 	}
-
 	return cols
 }
 
@@ -104,6 +99,22 @@ func (db *DB) Find(result interface{}) {
 
 	// str := val.String()
 
+	// defer rows.Close()
+
+	// fields := make([]interface{}, len(cols))
+	// for i := 0; i < v.NumField; i++ {
+	// 	field := reflect.New(v.Field(i).Type()).Interface()
+	// 	fields[i] = field
+	// }
+	// for rows.Next() {
+	// 	err := rows.Scan(fields...)
+	// 	if err != nil {
+	// 		log.Fatal(err)
+	// 	}
+	// 	for i := 0; i < len(fields); i++ {
+	// 		fmt.Println(reflect.ValueOf(fields[i]).Elem())
+	// 	}
+	// }
 }
 
 // First queries a database for the first row in a table,
@@ -121,7 +132,15 @@ func (db *DB) Find(result interface{}) {
 //    ok := db.First(result)
 // with the argument), otherwise return true.
 func (db *DB) First(result interface{}) bool {
-	return false
+	tableName := TableName(result)
+	query := "SELECT * FROM " + tableName + "LIMIT 1"
+	row := db.inner.QueryRow(query)
+	switch err := row.Scan(result); err {
+	case nil:
+		return true
+	default:
+		return false
+	}
 }
 
 // Create adds the specified model to the appropriate database table.
@@ -135,6 +154,67 @@ func (db *DB) First(result interface{}) bool {
 // This ID is given by the value of last_inserted_rowid(),
 // returned from the underlying sql database.
 func (db *DB) Create(model interface{}) {
+	fmt.Println("-------------------------------")
+	val := reflect.ValueOf(model).Elem().Kind()
+	fmt.Printf("%v  kind \n", val)
+	fmt.Printf("%v  value \n", reflect.ValueOf(model).Elem())
+	fmt.Printf("%v  type\n", reflect.TypeOf(model).Elem())
+	fmt.Println(val.String())
+	fmt.Println("-------------------------------")
+
+	// fmt.Println(db.inner)
+	name := TableName(model)
+	fmt.Println("select * from " + name + ";")
+	rows, table_check := db.inner.Query("select * from " + name + ";")
+	fmt.Println("rows", rows)
+	here, _ := db.inner.Query("SHOW TABLES")
+	fmt.Println("show tables: ", here)
+	if table_check == nil {
+		fmt.Println("table is there")
+		fmt.Println(rows.ColumnTypes())
+		cols, _ := rows.ColumnTypes()
+		fmt.Println("cols", cols)
+		colNames := []string{}
+		placeholder := []string{}
+		for i := 0; i < len(cols); i++ {
+			fmt.Println("field", i, cols[i].Name())
+			colNames = append(colNames, cols[i].Name())
+			placeholder = append(placeholder, "?")
+
+		}
+		fmt.Printf("%v  value again \n", reflect.ValueOf(model))
+		colVals := []interface{}{}
+		colValsStr := make([]string, len(colNames))
+		//  colTypes,err := rows.ColumnTypes()
+		fmt.Println("model", reflect.ValueOf(model).Elem(), reflect.TypeOf(model))
+		ele := reflect.ValueOf(model).Elem()
+		fmt.Println("posted", ele, ele.NumField(), ele.Field(0))
+
+		for i := 0; i < ele.NumField(); i++ {
+			colVals = append(colVals, ele.Field(i).Interface())
+			colValsStr[i] = fmt.Sprintf("%v", colVals[i])
+			fmt.Println("colnams/val", colNames[i], colVals[i])
+		}
+		query := fmt.Sprintf("INSERT OR REPLACE INTO %v(%v) VALUES(%v)", name, strings.Join(colNames, ","), strings.Join(placeholder, ","))
+		fmt.Println(query)
+		stmt, err := db.inner.Prepare(query)
+		fmt.Println("stmt", stmt, err)
+		res, errExec := stmt.Exec(colVals...) // also returns uniquw id
+		if errExec != nil {
+			log.Panic(errExec)
+		}
+		if errExec == nil {
+			fmt.Println("somehow nil??", "should go on then")
+		}
+
+		lastinsert, _ := res.LastInsertId()
+		rowsAffected, _ := res.RowsAffected()
+		fmt.Println("res", lastinsert, rowsAffected)
+	} else {
+		fmt.Println("table not there")
+		log.Panic("table not there", table_check)
+	}
+
 }
 
 func camelToArray(word string) []string {
@@ -193,7 +273,6 @@ func camelToArray(word string) []string {
 	}
 	allWords = append(allWords, currentWord)
 	return allWords
-
 }
 
 func arrayToUnderscore(arr []string) string {
