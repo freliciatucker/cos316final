@@ -164,6 +164,8 @@ func (db *DB) First(result interface{}) bool {
 // This ID is given by the value of last_inserted_rowid(),
 // returned from the underlying sql database.
 func (db *DB) Create(model interface{}) {
+	rows, table_check := db.inner.Query("select * from " + TableName(model) + ";")
+	fmt.Println("rows", rows, table_check)
 	fmt.Println("-------------------------------")
 	val := reflect.ValueOf(model).Elem().Kind()
 	fmt.Printf("%v  kind \n", val)
@@ -173,12 +175,14 @@ func (db *DB) Create(model interface{}) {
 	fmt.Println("-------------------------------")
 
 	// fmt.Println(db.inner)
+	fmt.Println("calling tablenane")
 	name := TableName(model)
+	fmt.Println("_________________________")
 	fmt.Println("select * from " + name + ";")
-	rows, table_check := db.inner.Query("select * from " + name + ";")
-	fmt.Println("rows", rows)
-	here, _ := db.inner.Query("SHOW TABLES")
-	fmt.Println("show tables: ", here)
+	rows.Close()
+	rows, table_check = db.inner.Query("select * from " + name + ";")
+	fmt.Println("rows", rows, table_check)
+
 	if table_check == nil {
 		fmt.Println("table is there")
 		fmt.Println(rows.ColumnTypes())
@@ -207,6 +211,7 @@ func (db *DB) Create(model interface{}) {
 		}
 		query := fmt.Sprintf("INSERT OR REPLACE INTO %v(%v) VALUES(%v)", name, strings.Join(colNames, ","), strings.Join(placeholder, ","))
 		fmt.Println(query)
+		rows.Close()
 		stmt, err := db.inner.Prepare(query)
 		fmt.Println("stmt", stmt, err)
 		res, errExec := stmt.Exec(colVals...) // also returns uniquw id
