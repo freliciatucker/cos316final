@@ -46,7 +46,8 @@ type User struct {
 }
 
 type User2 struct {
-	FullName string
+	id       int
+	FullName string `mytag:"special field"`
 	eMail    string
 }
 
@@ -113,7 +114,7 @@ func TestCreate(t *testing.T) {
 	cols, err := res.ColumnTypes()
 	fmt.Println("tbales plz", &cols, cols[len(cols)-1].Name(), cols[0].Name(), err, table_check)
 	//rows, table_check := db.inner.Query("select * from " + TableName(&User{FullName: "Frelicia"}))
-
+	fmt.Println()
 	fmt.Println("rows", res, table_check, TableName(&User{FullName: "Frelicia"}))
 	res.Close()
 	defer db.Close()

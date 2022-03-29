@@ -103,9 +103,6 @@ func (db *DB) Find(result interface{}) {
 	fmt.Printf("%v  value", reflect.ValueOf(result))
 	fmt.Printf("%v  type", reflect.TypeOf(result))
 	fmt.Println(val.String())
-	if reflect.ValueOf(result).Kind() != reflect.Struct {
-		log.Panic("requires struct")
-	}
 
 	// str := val.String()
 
@@ -169,6 +166,7 @@ func (db *DB) Create(model interface{}) {
 	fmt.Println("-------------------------------")
 	val := reflect.ValueOf(model).Elem().Kind()
 	fmt.Printf("%v  kind \n", val)
+
 	fmt.Printf("%v  value \n", reflect.ValueOf(model).Elem())
 	fmt.Printf("%v  type\n", reflect.TypeOf(model).Elem())
 	fmt.Println(val.String())
@@ -184,6 +182,7 @@ func (db *DB) Create(model interface{}) {
 	fmt.Println("rows", rows, table_check)
 
 	if table_check == nil {
+		skipped := false
 		fmt.Println("table is there")
 		fmt.Println(rows.ColumnTypes())
 		cols, _ := rows.ColumnTypes()
@@ -191,12 +190,24 @@ func (db *DB) Create(model interface{}) {
 		colNames := []string{}
 		placeholder := []string{}
 		for i := 0; i < len(cols); i++ {
+			fmt.Println("&&&&&&&&&&&&&&&&&&", reflect.TypeOf(model).Elem().Field(i))
+			if val, ok := reflect.TypeOf(model).Elem().Field(i).Tag.Lookup("dorm"); ok {
+				if val == "primary_key" {
+					skipped = true
+					continue
+				}
+			}
 			fmt.Println("field", i, cols[i].Name())
 			colNames = append(colNames, cols[i].Name())
 			placeholder = append(placeholder, "?")
 
+			fmt.Println("*******************************")
+			//tag := t.Tag
+			//fmt.Println("tag", tag)
+
 		}
-		fmt.Printf("%v  value again \n", reflect.ValueOf(model))
+
+		fmt.Printf("%v  value again \n", reflect.ValueOf(model).Kind())
 		colVals := []interface{}{}
 		colValsStr := make([]string, len(colNames))
 		//  colTypes,err := rows.ColumnTypes()
@@ -225,6 +236,9 @@ func (db *DB) Create(model interface{}) {
 		lastinsert, _ := res.LastInsertId()
 		rowsAffected, _ := res.RowsAffected()
 		fmt.Println("res", lastinsert, rowsAffected)
+		if skipped {
+
+		}
 	} else {
 		fmt.Println("table not there")
 		log.Panic("table not there", table_check)
