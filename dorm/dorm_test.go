@@ -92,20 +92,17 @@ func TestFind(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
-	fmt.Println("in test create")
+	//fmt.Println("in test create")
 	conn := connectSQL()
 	createUserTable(conn)
-
 	insertUsers(conn, MockUsers)
 
 	db := NewDB(conn)
-	fmt.Println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-	//names, table_check := db.inner.Query("SHOW TABLES;")
-	//fmt.Println(names, table_check)
-	res, table_check := db.inner.Query("SELECT * FROM user")
-	fmt.Println("SELECT * FROM user", res, table_check)
+	defer db.Close()
 
 	fmt.Println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+	res, table_check := db.inner.Query("SELECT * FROM user")
+	fmt.Println("SELECT * FROM user", res, table_check)
 	/*for res.Next() {
 		var full_name string
 	r	res.Scan(&full_name)
@@ -117,7 +114,7 @@ func TestCreate(t *testing.T) {
 	fmt.Println()
 	fmt.Println("rows", res, table_check, TableName(&User{FullName: "Frelicia"}))
 	res.Close()
-	defer db.Close()
+	fmt.Println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
 
 	//results := MockUsers
 	// fmt.Println("here")

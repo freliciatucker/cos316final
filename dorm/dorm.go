@@ -169,17 +169,14 @@ func (db *DB) Create(model interface{}) {
 
 	fmt.Printf("%v  value \n", reflect.ValueOf(model).Elem())
 	fmt.Printf("%v  type\n", reflect.TypeOf(model).Elem())
+
 	fmt.Println(val.String())
 	fmt.Println("-------------------------------")
-
 	// fmt.Println(db.inner)
 	fmt.Println("calling tablenane")
 	name := TableName(model)
 	fmt.Println("_________________________")
 	fmt.Println("select * from " + name + ";")
-	rows.Close()
-	rows, table_check = db.inner.Query("select * from " + name + ";")
-	fmt.Println("rows", rows, table_check)
 
 	if table_check == nil {
 		skipped := false
@@ -187,13 +184,13 @@ func (db *DB) Create(model interface{}) {
 		fmt.Println(rows.ColumnTypes())
 		cols, _ := rows.ColumnTypes()
 		fmt.Println("cols", cols)
+		rows.Close()
 		colNames := []string{}
 		placeholder := []string{}
 		for i := 0; i < len(cols); i++ {
 			fmt.Println("&&&&&&&&&&&&&&&&&&", reflect.TypeOf(model).Elem().Field(i))
 			if val, ok := reflect.TypeOf(model).Elem().Field(i).Tag.Lookup("dorm"); ok {
 				if val == "primary_key" {
-					skipped = true
 					continue
 				}
 			}
@@ -204,28 +201,41 @@ func (db *DB) Create(model interface{}) {
 			fmt.Println("*******************************")
 			//tag := t.Tag
 			//fmt.Println("tag", tag)
-
 		}
 
-		fmt.Printf("%v  value again \n", reflect.ValueOf(model).Kind())
+		fmt.Printf("%v  value again \n", reflect.ValueOf(model).Elem().Kind())
 		colVals := []interface{}{}
-		colValsStr := make([]string, len(colNames))
+
+		var colValsStr []string
+		fmt.Println("len of colnames", len(colNames), len(colValsStr))
 		//  colTypes,err := rows.ColumnTypes()
 		fmt.Println("model", reflect.ValueOf(model).Elem(), reflect.TypeOf(model))
-		ele := reflect.ValueOf(model).Elem()
-		fmt.Println("posted", ele, ele.NumField(), ele.Field(0))
+		ele := reflect.TypeOf(model).Elem()
+		fmt.Println("posted", ele, ele.NumField(), ele.Field(1))
 
 		for i := 0; i < ele.NumField(); i++ {
-			colVals = append(colVals, ele.Field(i).Interface())
-			colValsStr[i] = fmt.Sprintf("%v", colVals[i])
-			fmt.Println("colnams/val", colNames[i], colVals[i])
+			fmt.Println("population col vals", i)
+			if val, ok := ele.Field(i).Tag.Lookup("dorm"); ok {
+				if val == "primary_key" {
+					skipped = true
+					continue
+				}
+			}
+			fmt.Println("after checks", i)
+			colVals = append(colVals, reflect.ValueOf(model).Elem().Field(i).Interface())
+			fmt.Println("after checks", i)
+			colValsStr = append(colValsStr, fmt.Sprintf("%v", colVals[len(colVals)-1]))
+			//fmt.Println("colnams/val", colNames[i], colVals[len(colVals)-1])
 		}
+
 		query := fmt.Sprintf("INSERT OR REPLACE INTO %v(%v) VALUES(%v)", name, strings.Join(colNames, ","), strings.Join(placeholder, ","))
 		fmt.Println(query)
 		rows.Close()
 		stmt, err := db.inner.Prepare(query)
 		fmt.Println("stmt", stmt, err)
+		fmt.Println(colVals...)
 		res, errExec := stmt.Exec(colVals...) // also returns uniquw id
+
 		if errExec != nil {
 			log.Panic(errExec)
 		}
@@ -237,6 +247,9 @@ func (db *DB) Create(model interface{}) {
 		rowsAffected, _ := res.RowsAffected()
 		fmt.Println("res", lastinsert, rowsAffected)
 		if skipped {
+			//reflect.TypeOf(model).Elem()
+			reflect.ValueOf(model).Elem().Field(0).Set(reflect.ValueOf(lastinsert))
+			fmt.Println("model", reflect.ValueOf(model).Elem(), reflect.TypeOf(model))
 
 		}
 	} else {
