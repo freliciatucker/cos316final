@@ -1,214 +1,42 @@
-# COS316, Assignment 4: Dopey Object Relational Mapper (DORM)
+# COS316Final:, an extention of Assignment 4
 
-## Due: March 23rd at 11pm
+## Due: Deans Date
 
-# Dopey Object Relational Mapper (DORM)
+# Adding selection and projection operations to (DORM)
 
-This assignment asks you to build a generic Object Relational Mapper (ORM). An 
-ORM translates language-level objects---Go structs in our case---to and from a
-"relational mapping"---a SQLite database in our case. This allows application
-developers to use normal language constructs and idioms to manipulate data
-stored in a database.
+This assignment will extend the functionality of Dorm
 
-For example, an application that keeps track of posts by different users might
-have a Go struct modeling each post:
-
-```go
-type Post struct {
-    ID     int64
-    Author string
-    Posted time.Time
-    Likes  int
-    Body   string
-}
-```
-
-If we want to store this in a SQL database, the schema might look like:
-
-```sql
-create table post (
-    id integer primary key autoincrement,
-    author text,
-    posted timestamp,
-    likes integer,
-    body text
-)
-```
-
-where `id` is a primary key that is auto-incremented by 1 for each new record 
-(tuple) inserted into the table named `post`.
-
-An object relational mapper (ORM) allows an application developer to "talk" to the 
-database through the Go struct:
-
-```go
-// Create a new post
-post1 := &Post{
-    Author: "alevy",
-    Posted: time.Now(),
-    Likes: 0,
-    Body: "Hello fellow kids! This post will surely be viral"
-}
-
-// Insert the record into the database
-dorm.Create(post1)
-...
-
-// Get and display all posts
-allPosts := []Post{}
-dorm.Find(&allPosts)
-
-for _, post := range allPosts {
-    fmt.Printf("%s said: %s\n", post.Author, post.Body)
-}
-```
-
-In this assignment you'll build a simple ORM for mapping Go structs to a
-SQLite database that can add new rows from a struct, fetch all rows of a given 
-type, and fetch the first row of a given type, if it exists.
-
-You will also implement some helper functions to analyze provided structs and 
-return a string or strings representing the named fields of that struct.
 
 ## API
 
-The `dorm` package exposes the following API:
+The `dormPlus` package exposes the same API as 'dorm' plus the following:
 
 ```go
-type DB struct {
-	inner *sql.DB
-}
+// Specify value for a field and return rows that match the value 
+//be super general
+func (db *DB) Filter(result interface{}, field string, value string)
 
-// NewDB returns a new DB using the provided `conn`,
-// an sql database connection.
-// This function is provided for you. You DO NOT need to modify it.
-func NewDB(conn *sql.DB) DB
+// Query the database for the first n rows in a given table
+func (db *DB) TopN(result interface{}, n int)
 
-// Close closes db's database connection.
-// This function is provided for you. You DO NOT need to modify it.
-func (db *DB) Close() error
+// Query and return database results for a user specified SQL query
+func (db *DB) Query(result interface{}, query string)
 
-// ColumnNames analyzes a struct, v, and returns a list of strings,
-// one for each of the public fields of v.
-// The i'th string returned should be equal to the name of the i'th
-// public field of v, converted to underscore_case.
-// Refer to the specification of underscore_case, below.
+// Remove row from the database
+func (db *DB) Delete(result interface{},field string, value string)
 
-// Example usage:
-// type MyStruct struct {
-//    ID int64
-//    UserName string
-// }
-// ColumnNames(&MyStruct{})    ==>   []string{"id", "user_name"}
-func ColumnNames(v interface{}) []string
+// limit what data in the table a user has access to 
+//Might be useful to look at assignment 6
+//DCL - Data Control Language
+//GRANT:Gives a privilege to user.
+func (db *DB) Grant(userid string, permission string)
 
-// TableName analyzes a struct, v, and returns a single string, equal
-// to the name of that struct's type, converted to underscore_case.
-// Refer to the specification of underscore_case, below.
-
-// Example usage:
-// type MyStruct struct {
-//    ...
-// }
-// TableName(&MyStruct{})    ==>  "my_struct"
-func TableName(result interface{}) string
-
-// The function Find queries a database for all rows in a given table,
-// and stores all matching rows in the slice provided as an argument.
-
-// The argument `result` will be a pointer to an empty slice of models.
-// To be explicit, it will have type *[]MyStruct,
-// where MyStruct is any arbitrary struct subject to the restrictions
-// discussed later in this document.
-// You may assume the slice referenced by `result` is empty.
-
-// Example usage to find all UserComment entries in the database:
-//    type UserComment struct = { ... }
-//    result := []UserComment{}
-//    db.Find(&result)
-func (db *DB) Find(result interface{})
-
-// The function First queries a database for the first row in a table
-// and stores the matching row in the struct provided as an argument.
-// If no such entry exists, First returns false; otherwise it returns true.
-
-// The argument `result` will be a pointer to a model.
-// To be explicit, it will have type *MyStruct,
-// where MyStruct is any arbitrary struct subject to the restrictions
-// discussed later in this document.
-
-// Example usage to find the first UserComment entry in the database:
-//    type UserComment struct = { ... }
-//    result := &UserComment{}
-//    ok := db.First(result)
-func (db *DB) First(result interface{}) bool
-
-// Create adds the specified model to the appropriate database table.
-// The table for the model *must* already exist, and Create() should
-// panic if it does not.
-
-// Optionally, at most one of the fields of the provided `model`
-// might be annotated with the tag `dorm:"primary_key"`. If such a
-// field exists, Create() should ignore the provided value of that
-// field, overwriting it with the auto-incrementing row ID.
-// This ID is given by the value of last_inserted_rowid(),
-// returned from the underlying sql database.
-func (db *DB) Create(model interface{})
-```
-
-You will be required to implement the following functions:
-`TableName()`, `ColumnNames()`,  `Find()`, `First()`, `Create()`.
-
-The functions `NewDB` and `Close` are provided for you.
-There is no need to modify these functions for your implementation,
-although you are welcome to if it will help your implementation.
-
-### CamelCase and Underscore Case Specification
-
-You will need to devise a way to convert between `camelCase` identifiers (structs in Go)
-and `underscore_case` identifiers (columns in SQL). This conversion should apply whenever 
-your Go program interacts directly with the SQL database. You may find the 
-[strings](https://golang.org/pkg/strings/) package useful.
-
-Below is a formal specification of `CamelCase` and `underscore_case`:
-
-#### CamelCase
-In CamelCase, we define a "word" to be either:
-1.  any sequence of uppercase letters that is *not* followed
-    by a non-uppercase character.
-2.  a capitalized word (one uppercase letter followed by any number
-    of non-uppercase characters)
-3.  an initial sequence of non-uppercase characters.
-
-For our purposes, uppercase letters are as defined by
-[unicode.IsUpper](https://golang.org/pkg/unicode/#IsUpper).
-
-Consider the following examples, with CamelCase identifiers on the
-left, and their component words on the right.
+// REVOKE:Takes back privileges granted from user.
+func (db *DB) Revoke(userid string, permission string)
 
 ```
-CamelCase     ==>    ["Camel", "Case"]
-EMail         ==>    ["E", "Mail"]
-COSFiles      ==>    ["COS", "Files"]
-camelCase     ==>    ["camel", "Case"]
-OldCOSFiles   ==>    ["Old", "COS", "Files"]
-COSFilesX     ==>    ["COS", "Files", "X"]
-```
 
-Non-alphabetical characters like numbers will never cause a word split.
-In other words, you may consider them 'non-uppercase characters' for
-the purposes of the definitions above.
 
-#### Underscore_Case
-
-Underscore case consists of a sequence of lowercased words joined
-together by underscores. All of the names of tables and columns in your
-database will be in underscore_case, which means you will need to translate
-Golang's CamelCase identifiers to underscore_case identifiers.
-
-We recommend mapping a CamelCase identifier to a list of component words,
-and then lowercasing and joining the words together to obtain
-your underscore case identifier.
 
 ### Restrictions on Structs
 
