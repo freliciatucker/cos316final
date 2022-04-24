@@ -335,3 +335,37 @@ func arrayToUnderscore(arr []string) string {
 	str += val
 	return str
 }
+
+// Specify value for a field and return rows that match the value
+//be super general
+func (db *DB) Filter(result interface{}, field string, value string) {
+
+}
+
+// Query the database for the first n rows in a given table
+func (db *DB) TopN(result interface{}, n int) {
+
+}
+
+// Query and return database results for a user specified SQL query
+func (db *DB) Query(result interface{}, query string) {
+
+}
+
+// Remove row from the database
+func (db *DB) Delete(result interface{}, field string, value string) {
+
+}
+
+// limit what data in the table a user has access to
+//Might be useful to look at assignment 6
+//DCL - Data Control Language
+//GRANT:Gives a privilege to user.
+func (db *DB) Grant(userid string, permission string) {
+
+}
+
+// REVOKE:Takes back privileges granted from user.
+func (db *DB) Revoke(userid string, permission string) {
+
+}
