@@ -338,8 +338,10 @@ func arrayToUnderscore(arr []string) string {
 
 // Specify value for a field and return rows that match the value
 //be super general
+//stores the matching row in the struct provided as an argument.
 func (db *DB) Filter(result interface{}, field string, value string) {
-
+	rows, table_check := db.inner.Query("select * from " + TableName(result) + " WHERE " + field + " = '" + value + "';")
+	fmt.Println(rows, table_check)
 }
 
 // Query the database for the first n rows in a given table

@@ -8,6 +8,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+//Check that Filter() locates all relevant database records
 func TestFilter(t *testing.T) {
 	//fmt.Println("in test create")
 	conn := connectSQL()
@@ -35,11 +36,16 @@ func TestFilter(t *testing.T) {
 
 	//results := MockUsers
 	// fmt.Println("here")
-	db.Create(&User{FullName: "Frelicia"})
+	db.Filter(&User{FullName: "Frelicia"}, "FullName", "Frelicia")
 	//ColumnNames(&results)
 }
 
-func TestTopN(t *testing.T) {}
+// Check that Find() panics when no table exists for a query
+func TestFilterPanic(t *testing.T) {}
+
+func TestTopN(t *testing.T) {
+
+}
 
 func TestQuery(t *testing.T) {}
 
