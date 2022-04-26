@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	"unicode"
 )
 
 // DB handle
@@ -28,6 +27,7 @@ func (db *DB) Close() error {
 	return db.inner.Close()
 }
 
+// source: https://stackoverflow.com/questions/56616196/how-to-convert-camel-case-string-to-snake-case
 var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
 var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
 
@@ -71,17 +71,6 @@ func ColumnNames(v interface{}) []string {
 // TableName(&MyStruct{})    ==>  "my_struct"
 func TableName(result interface{}) string {
 	val := reflect.TypeOf(result).Elem().Name()
-	fmt.Printf("%v", val)
-	//fmt.Println(val.Name())
-	fmt.Printf("%v  value", reflect.ValueOf(result))
-	fmt.Printf("%v  type", reflect.TypeOf(result))
-	/*if reflect.TypeOf(result).Elem().Name() != reflect.Struct {
-		log.Panic("requires struct")
-	}*/
-
-	fmt.Println("passed!")
-	//str := val.String()
-
 	return ToSnakeCase(val)
 }
 
@@ -98,30 +87,38 @@ func TableName(result interface{}) string {
 //    result := []UserComment{}
 //    db.Find(&result)
 func (db *DB) Find(result interface{}) {
-	val := reflect.ValueOf(result).Kind()
-	fmt.Printf("%v  kind", val)
-	fmt.Printf("%v  value", reflect.ValueOf(result))
-	fmt.Printf("%v  type", reflect.TypeOf(result))
-	fmt.Println(val.String())
+	r := reflect.New(reflect.ValueOf(result).Type().Elem().Elem()).Interface()
+	tableName := TableName(r)
+	cols := ColumnNames(r)
 
-	// str := val.String()
+	query := "SELECT * FROM " + tableName
+	rows, err := db.inner.Query(query)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer rows.Close()
 
-	// defer rows.Close()
+	v := reflect.Indirect(reflect.New(reflect.ValueOf(r).Type().Elem()))
+	fields := make([]interface{}, len(cols))
 
-	// fields := make([]interface{}, len(cols))
-	// for i := 0; i < v.NumField; i++ {
-	// 	field := reflect.New(v.Field(i).Type()).Interface()
-	// 	fields[i] = field
-	// }
-	// for rows.Next() {
-	// 	err := rows.Scan(fields...)
-	// 	if err != nil {
-	// 		log.Fatal(err)
-	// 	}
-	// 	for i := 0; i < len(fields); i++ {
-	// 		fmt.Println(reflect.ValueOf(fields[i]).Elem())
-	// 	}
-	// }
+	for i := 0; i < len(cols); i++ {
+		t := v.Field(i).Type()
+		field := reflect.New(t).Interface()
+		fields[i] = field
+	}
+
+	for rows.Next() {
+		rows.Scan(fields...)
+		resultRow := reflect.New(reflect.TypeOf(r).Elem())
+		val := reflect.Indirect(resultRow)
+		for i := 0; i < len(fields); i++ {
+			if val.Field(i).CanSet() {
+				val.Field(i).Set(reflect.ValueOf(fields[i]).Elem())
+			}
+		}
+		res := reflect.ValueOf(result).Elem()
+		res.Set(reflect.Append(reflect.Indirect(reflect.ValueOf(result)), val))
+	}
 }
 
 // First queries a database for the first row in a table,
@@ -140,14 +137,30 @@ func (db *DB) Find(result interface{}) {
 // with the argument), otherwise return true.
 func (db *DB) First(result interface{}) bool {
 	tableName := TableName(result)
-	query := "SELECT * FROM " + tableName + "LIMIT 1"
-	row := db.inner.QueryRow(query)
-	switch err := row.Scan(result); err {
-	case nil:
-		return true
-	default:
-		return false
+	cols := ColumnNames(result)
+
+	query := "SELECT * FROM " + tableName + " LIMIT 1"
+	rows, err := db.inner.Query(query)
+
+	v := reflect.ValueOf(result).Elem()
+	fields := make([]interface{}, len(cols))
+	for i := 0; i < len(cols); i++ {
+		t := v.Field(i).Type()
+		field := reflect.New(t).Interface()
+		fields[i] = field
 	}
+
+	if err != nil {
+		log.Panic(err)
+		return false
+	} else if rows.Next() {
+		rows.Scan(fields...)
+		for i := 0; i < len(fields); i++ {
+			v.Field(i).Set(reflect.ValueOf(fields[i]).Elem())
+		}
+		return true
+	}
+	return false
 }
 
 // Create adds the specified model to the appropriate database table.
@@ -257,83 +270,6 @@ func (db *DB) Create(model interface{}) {
 		log.Panic("table not there", table_check)
 	}
 
-}
-
-func camelToArray(word string) []string {
-	allWords := []string{}
-
-	currentWord := ""
-	// endOfWord := false
-	beginnningOfWord := true
-	isUpper := false
-
-	for i := 0; i < len(word); i++ {
-		//currentWord += string(word[i])
-		if beginnningOfWord {
-			if i < len(word) {
-				isUpper = unicode.IsUpper(rune(word[i+1]))
-			}
-			beginnningOfWord = false
-			currentWord += string(word[i])
-		} else {
-
-			if isUpper && unicode.IsUpper(rune(word[i])) {
-				if i < len(word)-2 && !unicode.IsUpper(rune(word[i+2])) {
-					currentWord += string(word[i])
-					allWords = append(allWords, currentWord)
-					currentWord = ""
-					beginnningOfWord = true
-					continue
-
-				} else if i == len(word)-1 || unicode.IsUpper(rune(word[i+1])) {
-					currentWord += string(word[i])
-					continue
-
-				} else {
-					allWords = append(allWords, currentWord)
-					fmt.Println(currentWord)
-					currentWord = ""
-					beginnningOfWord = true
-					//allWords = append(allWords, currentWord)
-					continue
-				}
-			}
-
-			if !unicode.IsUpper(rune(word[i])) {
-				isUpper = false
-				currentWord += string(word[i])
-				continue
-			}
-			allWords = append(allWords, currentWord)
-			//fmt.Println(currentWord)
-			currentWord = ""
-			beginnningOfWord = true
-			i--
-			//allWords = append(allWords, currentWord)
-		}
-
-	}
-	allWords = append(allWords, currentWord)
-	return allWords
-}
-
-func arrayToUnderscore(arr []string) string {
-	fmt.Println("in to lower", len(arr), arr)
-	if len(arr) < 1 {
-		return ""
-	}
-	fmt.Println("in to lower2")
-	str := ""
-	for i := 0; i < len(arr)-1; i++ {
-		fmt.Print("in to lower3")
-		val := strings.ToLower(string(arr[i])) //+ string(arr[i][1:])
-		str += val + "_"
-		fmt.Println(str)
-	}
-	fmt.Println("in to lower4", str)
-	val := strings.ToLower(string(arr[len(arr)-1])) // + string(arr[len(arr)-1][1:])
-	str += val
-	return str
 }
 
 // Specify value for a field and return rows that match the value
