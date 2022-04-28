@@ -74,29 +74,10 @@ func TableName(result interface{}) string {
 	return ToSnakeCase(val)
 }
 
-// Find queries a database for all rows in a given table,
-// and stores all matching rows in the slice provided as an argument.
-
-// The argument `result` will be a pointer to an empty slice of models. // To be explicit, it will have type: *[]MyStruct,
-// where MyStruct is any arbitrary struct subject to the restrictions
-// discussed later in this document.
-// You may assume the slice referenced by `result` is empty.
-
-// Example usage to find all UserComment entries in the database:
-//    type UserComment struct = { ... }
-//    result := []UserComment{}
-//    db.Find(&result)
-func (db *DB) Find(result interface{}) {
-	r := reflect.New(reflect.ValueOf(result).Type().Elem().Elem()).Interface()
-	tableName := TableName(r)
+// Write rows resulting from SQL database query to result interface, which has
+// the type that interface r has.
+func writeRows(r interface{}, rows *sql.Rows, result interface{}) {
 	cols := ColumnNames(r)
-
-	query := "SELECT * FROM " + tableName
-	rows, err := db.inner.Query(query)
-	if err != nil {
-		log.Panic(err)
-	}
-	defer rows.Close()
 
 	v := reflect.Indirect(reflect.New(reflect.ValueOf(r).Type().Elem()))
 	fields := make([]interface{}, len(cols))
@@ -119,6 +100,32 @@ func (db *DB) Find(result interface{}) {
 		res := reflect.ValueOf(result).Elem()
 		res.Set(reflect.Append(reflect.Indirect(reflect.ValueOf(result)), val))
 	}
+}
+
+// Find queries a database for all rows in a given table,
+// and stores all matching rows in the slice provided as an argument.
+
+// The argument `result` will be a pointer to an empty slice of models. // To be explicit, it will have type: *[]MyStruct,
+// where MyStruct is any arbitrary struct subject to the restrictions
+// discussed later in this document.
+// You may assume the slice referenced by `result` is empty.
+
+// Example usage to find all UserComment entries in the database:
+//    type UserComment struct = { ... }
+//    result := []UserComment{}
+//    db.Find(&result)
+func (db *DB) Find(result interface{}) {
+	r := reflect.New(reflect.ValueOf(result).Type().Elem().Elem()).Interface()
+	tableName := TableName(r)
+
+	query := "SELECT * FROM " + tableName
+	rows, err := db.inner.Query(query)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer rows.Close()
+
+	writeRows(r, rows, result)
 }
 
 // First queries a database for the first row in a table,
@@ -282,12 +289,30 @@ func (db *DB) Filter(result interface{}, field string, value string) {
 
 // Query the database for the first n rows in a given table
 func (db *DB) TopN(result interface{}, n int) {
+	r := reflect.New(reflect.ValueOf(result).Type().Elem().Elem()).Interface()
+	tableName := TableName(r)
 
+	query := fmt.Sprintf("SELECT * FROM %s LIMIT %d", tableName, n)
+	rows, err := db.inner.Query(query)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer rows.Close()
+
+	writeRows(r, rows, result)
 }
 
 // Query and return database results for a user specified SQL query
 func (db *DB) Query(result interface{}, query string) {
+	r := reflect.New(reflect.ValueOf(result).Type().Elem().Elem()).Interface()
 
+	rows, err := db.inner.Query(query)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer rows.Close()
+
+	writeRows(r, rows, result)
 }
 
 // Remove row from the database

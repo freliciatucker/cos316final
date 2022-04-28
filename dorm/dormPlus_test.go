@@ -47,8 +47,6 @@ func TestTopN(t *testing.T) {
 
 }
 
-func TestQuery(t *testing.T) {}
-
 func TestDelete(t *testing.T) {}
 
 func TestGrant(t *testing.T) {}

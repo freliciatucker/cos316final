@@ -54,16 +54,6 @@ var MockUsers = []User{
 	User{FullName: "Test User1"},
 }
 
-func TestString(t *testing.T) {
-	words := []string{"CamelCase", "EMail", "COSFiles", "camelCase", "OldCOSFiles", "COSFiles"}
-	for _, val := range words {
-		arr := camelToArray(val)
-		fmt.Println(val, arr)
-		fmt.Println(arrayToUnderscore(arr))
-	}
-
-}
-
 func TestColumnNames(t *testing.T) {
 	cols := ColumnNames(&User2{})
 	if len(cols) != 1 {
@@ -82,6 +72,23 @@ func TestFind(t *testing.T) {
 
 	results := []User{}
 	db.Find(&results)
+
+	if len(results) != 1 {
+		t.Errorf("Expected 1 users but found %d", len(results))
+		fmt.Println(results)
+	}
+}
+
+func TestQuery(t *testing.T) {
+	conn := connectSQL()
+	createUserTable(conn)
+	insertUsers(conn, MockUsers)
+
+	db := NewDB(conn)
+	defer db.Close()
+
+	results := []User{}
+	db.Query(&results, "SELECT * FROM user")
 
 	if len(results) != 1 {
 		t.Errorf("Expected 1 users but found %d", len(results))
