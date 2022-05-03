@@ -67,17 +67,6 @@ var MockUsers2 = []User{
 	User{FullName: "Frelicia"},
 }
 
-func TestString(t *testing.T) {
-	words := []string{"CamelCase", "EMail", "COSFiles", "camelCase", "OldCOSFiles", "COSFiles"}
-	for _, val := range words {
-		arr := camelToArray(val)
-		fmt.Println(val, arr)
-		fmt.Println(arrayToUnderscore(arr))
-	}
-
-}
-
-
 func TestColumnNames(t *testing.T) {
 	cols := ColumnNames(&User2{})
 	if len(cols) != 1 {
