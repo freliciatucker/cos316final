@@ -16,6 +16,14 @@ func connectSQL() *sql.DB {
 	return conn
 }
 
+func connectSQLAuth() *sql.DB {
+	conn, err := sql.Open("sqlite3", "file:test.db?mode=memory&_auth&_auth_user=admin&_auth_pass=admin")
+	if err != nil {
+		panic(err)
+	}
+	return conn
+}
+
 func createUserTable(conn *sql.DB) {
 	_, err := conn.Exec(`create table user (
 		full_name text
@@ -53,6 +61,11 @@ type User2 struct {
 
 var MockUsers = []User{
 	User{FullName: "Test User1"},
+}
+
+var MockUsers2 = []User{
+	User{FullName: "Test User1"},
+	User{FullName: "Frelicia"},
 }
 
 func TestString(t *testing.T) {
