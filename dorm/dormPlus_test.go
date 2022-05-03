@@ -12,6 +12,7 @@ import (
 )
 
 //Check that Filter() locates all relevant database records
+
 func TestFilter(t *testing.T) {
 	conn := connectSQL()
 	createUserTable(conn)
@@ -21,6 +22,7 @@ func TestFilter(t *testing.T) {
 	defer db.Close()
 
 	results := []User{}
+	// checks the filter only returns 1 user bc only one user satisfies filter
 	db.Filter(&results, &User{FullName: "Frelicia Tucker"})
 	expectedResults := []User{
 		{FullName: "Frelicia Tucker"},
@@ -29,6 +31,7 @@ func TestFilter(t *testing.T) {
 		t.Errorf("incorrect")
 		fmt.Println(results)
 	}
+
 }
 
 func Test_Filter_Multiple(t *testing.T) {
@@ -42,6 +45,13 @@ func Test_Filter_Multiple(t *testing.T) {
 	results := []User2{}
 	filter := &User2{FullName: "Frelicia", EMail: "f@t"}
 	db.Filter(&results, filter)
+	expectedResults := []User2{
+		User2{FullName: "Frelicia", EMail: "f@t"},
+	}
+	if !reflect.DeepEqual(results, expectedResults) {
+		t.Errorf("incorrect")
+		fmt.Println(results, expectedResults)
+	}
 }
 
 // Check that Filter() panics when no table exists for a query
@@ -136,13 +146,12 @@ func TestDelete(t *testing.T) {
 	}
 	res.Close()
 	fmt.Println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-	fmt.Println("after Deleteing 'Test User1' from database")
 
 	//results := MockUsers
 	// fmt.Println("here")
 	db.Delete(&User{FullName: "Test User1"})
 	//ColumnNames(&results)
-
+	fmt.Println("after Deleteing 'Test User1' from database")
 	//fmt.Println("after Delete")
 	str := ""
 	rows, _ := db.inner.Query("SELECT * FROM user")
@@ -214,6 +223,16 @@ func Test_Delete_MultipleCases(t *testing.T) {
 	db := NewDB(conn)
 	defer db.Close()
 	res := &User2{FullName: "Frelicia", EMail: "f@t"}
+
+	res2, table_check := db.inner.Query("SELECT * FROM user2")
+	fmt.Println("SELECT * FROM user2", res2, table_check)
+	for res2.Next() {
+		var full_name string
+		res2.Scan(&full_name)
+		fmt.Println("names:    ", full_name)
+	}
+	res2.Close()
+
 	db.Delete(res)
 	fmt.Println("after Delete")
 	rows, _ := db.inner.Query("SELECT * FROM user2")
@@ -225,6 +244,7 @@ func Test_Delete_MultipleCases(t *testing.T) {
 	rows.Close()
 }
 
+// panics if you're trying to delete from a table that doesnt exist
 func Test_Delete_Panic(t *testing.T) {
 	conn := connectSQL()
 	createUserTable(conn)
@@ -244,45 +264,10 @@ func Test_Delete_Panic(t *testing.T) {
 	db.Delete(&UserFake{FullName: "Frelicia"})
 
 }
-func TestGrant(t *testing.T) {
-	conn := connectSQLAuth()
-	createUserTable(conn)
-	insertUsers(conn, MockUsers2)
 
-	db := NewDB(conn)
-	defer db.Close()
-
-	fmt.Println("show database")
-	rows, _ := db.inner.Query("SELECT * FROM user")
-	for rows.Next() {
-		var full_name string
-		rows.Scan(&full_name)
-		fmt.Println("names:    ", full_name)
-	}
-	rows.Close()
-}
-
-func TestRevoke(t *testing.T) {
-	conn := connectSQLAuth()
-	createUserTable(conn)
-	insertUsers(conn, MockUsers2)
-
-	db := NewDB(conn)
-	defer db.Close()
-
-	fmt.Println("show database")
-	rows, _ := db.inner.Query("SELECT * FROM user")
-	for rows.Next() {
-		var full_name string
-		rows.Scan(&full_name)
-		fmt.Println("names:    ", full_name)
-	}
-	rows.Close()
-
-}
-
+// creates table with name and quantity and addes info on 1 row into new table
 func TestCreateTable(t *testing.T) {
-	conn := connectSQLAuth()
+	conn := connectSQL()
 	db := NewDB(conn)
 	defer db.Close()
 
@@ -304,8 +289,9 @@ func TestCreateTable(t *testing.T) {
 
 }
 
+// creates table with quantity and addes info on 1 row into new table
 func TestCreateTable2(t *testing.T) {
-	conn := connectSQLAuth()
+	conn := connectSQL()
 	db := NewDB(conn)
 	defer db.Close()
 
@@ -324,5 +310,23 @@ func TestCreateTable2(t *testing.T) {
 		fmt.Println("names:    ", full_name)
 	}
 	rows.Close()
+
+}
+
+// should panic if table is already created
+func TestCreateTablePanic(t *testing.T) {
+	conn := connectSQL()
+	createUserTable(conn)
+	insertUsers(conn, MockUsers2)
+
+	db := NewDB(conn)
+	defer db.Close()
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("The code did not panic")
+		}
+	}()
+	db.CreateTable(&User{FullName: "Frelicia"})
 
 }

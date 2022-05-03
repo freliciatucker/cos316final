@@ -206,7 +206,7 @@ func (db *DB) First(result interface{}) bool {
 // returned from the underlying sql database.
 func (db *DB) Create(model interface{}) {
 	rows, table_check := db.inner.Query("select * from " + TableName(model) + ";")
-	fmt.Println("rows", rows, table_check)
+	/*fmt.Println("rows", rows, table_check)
 	fmt.Println("-------------------------------")
 	val := reflect.ValueOf(model).Elem().Kind()
 	fmt.Printf("%v  kind \n", val)
@@ -217,17 +217,17 @@ func (db *DB) Create(model interface{}) {
 	fmt.Println(val.String())
 	fmt.Println("-------------------------------")
 	// fmt.Println(db.inner)
-	fmt.Println("calling tablenane")
+	fmt.Println("calling tablenane")*/
 	name := TableName(model)
-	fmt.Println("_________________________")
-	fmt.Println("select * from " + name + ";")
+	//fmt.Println("_________________________")
+	//fmt.Println("select * from " + name + ";")
 
 	if table_check == nil {
 		skipped := false
-		fmt.Println("table is there")
-		fmt.Println(rows.ColumnTypes())
+		//fmt.Println("table is there")
+		//fmt.Println(rows.ColumnTypes())
 		cols, _ := rows.ColumnTypes()
-		fmt.Println("cols", cols)
+		//fmt.Println("cols", cols)
 		rows.Close()
 		colNames := []string{}
 		placeholder := []string{}
@@ -238,13 +238,13 @@ func (db *DB) Create(model interface{}) {
 				numExportedField++
 
 			}
-			fmt.Println("&&&&&&&&&&&&&&&&&&", reflect.TypeOf(model).Elem().Field(numExportedField))
+			//fmt.Println("&&&&&&&&&&&&&&&&&&", reflect.TypeOf(model).Elem().Field(numExportedField))
 			if val, ok := reflect.TypeOf(model).Elem().Field(numExportedField).Tag.Lookup("dorm"); ok {
 				if val == "primary_key" {
 					continue
 				}
 			}
-			fmt.Println("field", i, cols[i].Name())
+			//fmt.Println("field", i, cols[i].Name())
 			colNames = append(colNames, cols[i].Name())
 			placeholder = append(placeholder, "?")
 
@@ -253,20 +253,20 @@ func (db *DB) Create(model interface{}) {
 			//tag := t.Tag
 			//fmt.Println("tag", tag)
 		}
-		fmt.Println("Placeholders", placeholder)
-		fmt.Printf("%v  value again \n", reflect.ValueOf(model).Elem().Kind())
+		//fmt.Println("Placeholders", placeholder)
+		//fmt.Printf("%v  value again \n", reflect.ValueOf(model).Elem().Kind())
 		colVals := []interface{}{}
 
 		var colValsStr []string
-		fmt.Println("len of colnames", len(colNames), len(colValsStr))
+		//fmt.Println("len of colnames", len(colNames), len(colValsStr))
 		//  colTypes,err := rows.ColumnTypes()
-		fmt.Println("model", reflect.ValueOf(model).Elem(), reflect.TypeOf(model))
+		//fmt.Println("model", reflect.ValueOf(model).Elem(), reflect.TypeOf(model))
 		ele := reflect.TypeOf(model).Elem()
-		fmt.Println("posted", ele, ele.NumField(), ele.Field(0))
+		//fmt.Println("posted", ele, ele.NumField(), ele.Field(0))
 
 		numExportedField = 0
 		for i := 0; i < ele.NumField() && numExportedField < ele.NumField(); i++ {
-			fmt.Println("population col vals", i)
+			//fmt.Println("population col vals", i)
 			for !reflect.TypeOf(model).Elem().Field(numExportedField).IsExported() {
 				numExportedField++
 			}
@@ -276,21 +276,21 @@ func (db *DB) Create(model interface{}) {
 					continue
 				}
 			}
-			fmt.Println("after checks", i)
+			//fmt.Println("after checks", i)
 			colVals = append(colVals, reflect.ValueOf(model).Elem().Field(numExportedField).Interface())
-			fmt.Println("after checks", i, fmt.Sprintf("%v", colVals[len(colVals)-1]))
+			//fmt.Println("after checks", i, fmt.Sprintf("%v", colVals[len(colVals)-1]))
 			colValsStr = append(colValsStr, fmt.Sprintf("%v", colVals[len(colVals)-1]))
 			//fmt.Println("colnams/val", colNames[i], colVals[len(colVals)-1])
 			numExportedField++
 		}
 
-		fmt.Println(colVals)
+		//fmt.Println(colVals)
 		query := fmt.Sprintf("INSERT OR REPLACE INTO %v(%v) VALUES(%v)", name, strings.Join(colNames, ","), strings.Join(placeholder, ","))
-		fmt.Println(query)
+		//fmt.Println(query)
 		rows.Close()
-		stmt, err := db.inner.Prepare(query)
-		fmt.Println("stmt", stmt, err)
-		fmt.Println(colVals...)
+		stmt, _ := db.inner.Prepare(query)
+		//fmt.Println("stmt", stmt, err)
+		//fmt.Println(colVals...)
 		res, errExec := stmt.Exec(colVals...) // also returns uniquw id
 
 		if errExec != nil {
@@ -301,12 +301,12 @@ func (db *DB) Create(model interface{}) {
 		}
 
 		lastinsert, _ := res.LastInsertId()
-		rowsAffected, _ := res.RowsAffected()
-		fmt.Println("res", lastinsert, rowsAffected)
+		//rowsAffected, _ := res.RowsAffected()
+		//fmt.Println("res", lastinsert, rowsAffected)
 		if skipped {
 			//reflect.TypeOf(model).Elem()
 			reflect.ValueOf(model).Elem().Field(0).Set(reflect.ValueOf(lastinsert))
-			fmt.Println("model", reflect.ValueOf(model).Elem(), reflect.TypeOf(model))
+			//fmt.Println("model", reflect.ValueOf(model).Elem(), reflect.TypeOf(model))
 
 		}
 	} else {
@@ -337,6 +337,15 @@ func (db *DB) Filter(result interface{}, filter interface{}) {
 	}
 
 	query := fmt.Sprintf("SELECT * FROM %v WHERE %v", tableName, totalString)
+	fmt.Println("filter query:", query)
+	res, _ := db.inner.Query(query)
+	for res.Next() {
+		var full_name string
+		var e_mail string
+		res.Scan(&full_name, &e_mail)
+		fmt.Println("names:    ", full_name, e_mail)
+	}
+	res.Close()
 	rows, err := db.inner.Query(query)
 	if err != nil {
 		log.Panic(err)
@@ -376,23 +385,23 @@ func (db *DB) Query(result interface{}, query string) {
 
 // Remove row from the database
 func (db *DB) Delete(model interface{}) {
-	fmt.Println("in delete")
+	//fmt.Println("in delete")
 
 	rows, table_check := db.inner.Query("select * from " + TableName(model) + ";")
 	//fmt.Println("rows",rows, table_check)
-	fmt.Println("-------------------------------")
-	val := reflect.ValueOf(model).Elem().Kind()
-	fmt.Printf("%v  kind \n", val)
+	//fmt.Println("-------------------------------")
+	//val := reflect.ValueOf(model).Elem().Kind()
+	/*fmt.Printf("%v  kind \n", val)
 
 	fmt.Printf("%v  value \n", reflect.ValueOf(model).Elem())
 	fmt.Printf("%v  type\n", reflect.TypeOf(model).Elem())
 
 	fmt.Println(val.String())
-	fmt.Println("-------------------------------")
+	fmt.Println("-------------------------------")*/
 	// fmt.Println(db.inner)
-	fmt.Println("calling tablenane")
+	//fmt.Println("calling tablenane")
 	name := TableName(model)
-	fmt.Println("_________________________")
+	//fmt.Println("_________________________")
 	fmt.Println("select * from " + name + ";")
 
 	if table_check == nil {
@@ -406,8 +415,8 @@ func (db *DB) Delete(model interface{}) {
 		//.Elem()).Interface()
 
 		cols := ColumnNames(model)
-		fmt.Println("col names of result:", cols, name)
-		colTypes := ColumnTypes(model)
+		//fmt.Println("col names of result:", cols, name)
+		//colTypes := ColumnTypes(model)
 		colVals := []interface{}{}
 
 		//var colValsStr []string
@@ -417,16 +426,16 @@ func (db *DB) Delete(model interface{}) {
 		//ele := reflect.TypeOf(model).Elem()
 		numExportedField := 0
 		for i := 0; i < len(cols)-1; i++ {
-			fmt.Println("population col vals", i)
+			/*fmt.Println("population col vals", i)
 			fmt.Println("after checks", i)
 
-			fmt.Println("after checks", i)
+			fmt.Println("after checks", i)*/
 			//colValsStr = append(colValsStr, fmt.Sprintf("%v", colVals[len(colVals)-1]))
 			//fmt.Println("colnams/val", colNames[i], colVals[len(colVals)-1])
 			for !reflect.TypeOf(model).Elem().Field(numExportedField).IsExported() {
 				numExportedField++
 			}
-			fmt.Println(colTypes[i])
+			//fmt.Println(colTypes[i])
 			totalString += cols[i] + "=?" + " OR "
 			//if colTypes[i] == "string" {
 			word = fmt.Sprintf("%v", reflect.ValueOf(model).Elem().Field(numExportedField).Interface())
@@ -437,12 +446,14 @@ func (db *DB) Delete(model interface{}) {
 			}*/
 			colVals = append(colVals, word)
 			withVal += cols[i] + "=" + word + " OR "
+			numExportedField++
 		}
-		fmt.Println("********", cols)
-		fmt.Println(colTypes[len(cols)-1])
+		//fmt.Println("********", cols)
+		//fmt.Println(colTypes[len(cols)-1])
 		totalString += cols[len(cols)-1] + "=?"
 		//if colTypes[len(cols)-1] == "string" {
-		word = fmt.Sprintf("%v", reflect.ValueOf(model).Elem().Field(numExportedField+1).Interface())
+		//fmt.Println(len(cols), numExportedField)
+		word = fmt.Sprintf("%v", reflect.ValueOf(model).Elem().Field(numExportedField).Interface())
 		/*} else {
 			word = fmt.Sprintf("%v", reflect.ValueOf(model).Elem().Field(len(cols)-1).Interface())
 		}*/
@@ -457,9 +468,9 @@ func (db *DB) Delete(model interface{}) {
 		//fmt.Println(query)
 		rows.Close()
 		stmt, err := db.inner.Prepare(query)
-		fmt.Println("stmt", stmt, err, colVals)
+		/*fmt.Println("stmt", stmt, err, colVals)
 		fmt.Println(colVals)
-		fmt.Println(colVals...)
+		fmt.Println(colVals...)*/
 		res, errExec := stmt.Exec(colVals...) // also returns uniquw id
 		/*for res.Next() {
 			var full_name string
@@ -470,15 +481,15 @@ func (db *DB) Delete(model interface{}) {
 		if errExec != nil {
 			fmt.Println("0", err, num)
 		} else {
-			fmt.Println(num, err)
+			//fmt.Println(num, err)
 		}
 		//query := "SELECT * FROM " + tableName
-		fmt.Println("placeholder string I have: ", query)
+		//fmt.Println("placeholder string I have: ", query)
 		fmt.Println("full string it will be: ", fullString)
 		//rows, err := db.inner.Query(query)
 
 	} else {
-		fmt.Println("table not there")
+		//fmt.Println("table not there")
 		log.Panic("table not there", table_check)
 	}
 
@@ -500,21 +511,19 @@ func (db *DB) Revoke(userid string, permission string) {
 func sqlType(t string) string {
 	if t == "string" {
 		return "text"
-	} else if strings.Contains(t, "float") || strings.Contains(t, "int") || strings.Contains(t, "bool") || strings.Contains(t, "char") {
-		return t
 	} else {
-		return "text"
+		return "num"
 	}
 
 }
 
 // REVOKE:Takes back privileges granted from user.
 func (db *DB) CreateTable(model interface{}) {
-	rows, table_check := db.inner.Query("select * from " + TableName(model) + ";")
-	fmt.Println("rows", rows, table_check)
-	fmt.Println("-------------------------------")
-	val := reflect.ValueOf(model).Elem().Kind()
-	fmt.Printf("%v  kind \n", val)
+	_, table_check := db.inner.Query("select * from " + TableName(model) + ";")
+	//fmt.Println("rows", rows, table_check)
+	//fmt.Println("-------------------------------")
+	//val := reflect.ValueOf(model).Elem().Kind()
+	/*fmt.Printf("%v  kind \n", val)
 
 	fmt.Printf("%v  value \n", reflect.ValueOf(model).Elem())
 	fmt.Printf("%v  type\n", reflect.TypeOf(model).Elem())
@@ -522,14 +531,14 @@ func (db *DB) CreateTable(model interface{}) {
 	fmt.Println(val.String())
 	fmt.Println("-------------------------------")
 	// fmt.Println(db.inner)
-	fmt.Println("calling tablenane")
+	fmt.Println("calling tablenane")*/
 	name := TableName(model)
-	fmt.Println("_________________________")
-	fmt.Println("select * from " + name + ";")
+	//fmt.Println("_________________________")
+	//fmt.Println("select * from " + name + ";")
 
 	if table_check != nil {
 
-		fmt.Println("table should be created")
+		//fmt.Println("table should be created")
 		//t := reflect.TypeOf(model).Elem()
 		//u := reflect.New(t).Elem().Interface()
 		//fmt.Printf("u is %T, %#v\n", u, u)
@@ -558,7 +567,7 @@ func (db *DB) CreateTable(model interface{}) {
 			if i != fieldCount-1 {
 				together[i] = fmt.Sprintf("%v %v,", columns[i], types[i])
 			} else {
-				together[i] = fmt.Sprintf("%v %v", columns[i], types[i])
+				together[i] = fmt.Sprintf("%v %v", columns[i], sqlType(types[i]))
 			}
 			query += together[i] + "\n"
 		}
@@ -581,7 +590,7 @@ func (db *DB) CreateTable(model interface{}) {
 		db.Create(model)
 
 	} else {
-		fmt.Println("table already there")
+		log.Panic("table already there")
 	}
 
 }
