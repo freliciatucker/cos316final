@@ -46,19 +46,20 @@ func TestFilter(t *testing.T) {
 	db.Filter(&User{FullName: "Frelicia1"})
 }
 
-func TestFilterMultiple(t *testing.T) {
+func Test_Filter_Multiple(t *testing.T) {
 	conn := connectSQL()
-	createUserTable(conn)
-	insertUsers(conn, MockUsers2)
+	createUser2Table(conn)
+	insertUsers2(conn, MockUsers3)
 
 	db := NewDB(conn)
 	defer db.Close()
-
-	db.Filter(&User{FullName: "Frelicia"})
+	res := &User2{FullName: "Frelicia", EMail: "f@t"}
+	db.Filter(res)
+	fmt.Println(res)
 }
 
 // Check that Filter() panics when no table exists for a query
-func TestFilterPanic(t *testing.T) {
+func Test_Filter_Panic(t *testing.T) {
 	conn := connectSQL()
 	createUserTable(conn)
 	insertUsers(conn, MockUsers2)
@@ -180,15 +181,15 @@ func TestDelete(t *testing.T) {
 
 func Test_Delete_MultipleCases(t *testing.T) {
 	conn := connectSQL()
-	createUserTable(conn)
-	insertUsers(conn, MockUsers2)
+	createUser2Table(conn)
+	insertUsers2(conn, MockUsers3)
 
 	db := NewDB(conn)
 	defer db.Close()
-
-	db.Delete(&User{FullName: "Frelicia"})
+	res := &User2{FullName: "Frelicia", EMail: "f@t"}
+	db.Delete(res)
 	fmt.Println("after Delete")
-	rows, _ := db.inner.Query("SELECT * FROM user")
+	rows, _ := db.inner.Query("SELECT * FROM user2")
 	for rows.Next() {
 		var full_name string
 		rows.Scan(&full_name)
@@ -254,5 +255,51 @@ func TestRevoke(t *testing.T) {
 }
 
 func TestAlter(t *testing.T) {
+
+}
+
+func TestCreateTable(t *testing.T) {
+	conn := connectSQLAuth()
+	db := NewDB(conn)
+	defer db.Close()
+
+	type NewTable struct {
+		id       int
+		Name     string
+		Quantity int
+	}
+
+	db.CreateTable(&NewTable{id: 5, Name: "Frelicia", Quantity: 2})
+	fmt.Println("show database")
+	rows, _ := db.inner.Query("SELECT * FROM new_table")
+	for rows.Next() {
+		var full_name string
+		rows.Scan(&full_name)
+		fmt.Println("names:    ", full_name)
+	}
+	rows.Close()
+
+}
+
+func TestCreateTable2(t *testing.T) {
+	conn := connectSQLAuth()
+	db := NewDB(conn)
+	defer db.Close()
+
+	type NewTable struct {
+		id       int
+		name     string
+		Quantity int
+	}
+
+	db.CreateTable(&NewTable{id: 5, name: "Frelicia", Quantity: 2})
+	fmt.Println("show database")
+	rows, _ := db.inner.Query("SELECT * FROM new_table")
+	for rows.Next() {
+		var full_name string
+		rows.Scan(&full_name)
+		fmt.Println("names:    ", full_name)
+	}
+	rows.Close()
 
 }

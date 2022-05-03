@@ -36,11 +36,36 @@ func createUserTable(conn *sql.DB) {
 	// fmt.Println("in connect so shouldd work", res, err)
 }
 
+func createUser2Table(conn *sql.DB) {
+	_, err := conn.Exec(`create table user2 (
+		full_name text,
+		e_mail text
+	)`)
+
+	if err != nil {
+		panic(err)
+	}
+	// res, err := conn.Query("SELECT name FROM sqlite_schema WHERE type ='table' AND name NOT LIKE 'sqlite_%';")
+	// fmt.Println("in connect so shouldd work", res, err)
+}
+
 func insertUsers(conn *sql.DB, users []User) {
 	for _, uc := range users {
 		_, err := conn.Exec(`insert into user
 		values
 		(?)`, uc.FullName)
+
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
+func insertUsers2(conn *sql.DB, users []User2) {
+	for _, uc := range users {
+		_, err := conn.Exec(`insert into user2
+		values
+		(?,?)`, uc.FullName, uc.EMail)
 
 		if err != nil {
 			panic(err)
@@ -55,7 +80,7 @@ type User struct {
 type User2 struct {
 	id       int
 	FullName string `mytag:"special field"`
-	eMail    string
+	EMail    string
 }
 
 var MockUsers = []User{
@@ -65,6 +90,11 @@ var MockUsers = []User{
 var MockUsers2 = []User{
 	User{FullName: "Test User1"},
 	User{FullName: "Frelicia"},
+}
+
+var MockUsers3 = []User2{
+	User2{FullName: "Test User1"},
+	User2{FullName: "Frelicia", EMail: "f@t"},
 }
 
 func TestColumnNames(t *testing.T) {
