@@ -56,7 +56,21 @@ func ColumnNames(v interface{}) []string {
 		if t.Field(i).IsExported() {
 			cols = append(cols, ToSnakeCase(t.Field(i).Name))
 		}
+		fmt.Println("^^^^^^^^^^^^^", t.Field(i).Type)
 	}
+	return cols
+}
+
+func ColumnTypes(v interface{}) []string {
+	t := reflect.TypeOf(v).Elem()
+	cols := []string{}
+	for i := 0; i < t.NumField(); i++ {
+		if t.Field(i).IsExported() {
+			cols = append(cols, fmt.Sprintf("%v", t.Field(i).Type))
+		}
+		fmt.Println("^^^^^^^^^^^^^", t.Field(i).Type)
+	}
+	fmt.Println("$$$$$$$$$$$$$", cols)
 	return cols
 }
 
@@ -118,6 +132,7 @@ func (db *DB) Find(result interface{}) {
 	r := reflect.New(reflect.ValueOf(result).Type().Elem().Elem()).Interface()
 	tableName := TableName(r)
 
+
 	query := "SELECT * FROM " + tableName
 	rows, err := db.inner.Query(query)
 	if err != nil {
@@ -125,7 +140,9 @@ func (db *DB) Find(result interface{}) {
 	}
 	defer rows.Close()
 
+
 	writeRows(r, rows, result)
+
 }
 
 // First queries a database for the first row in a table,
@@ -282,9 +299,95 @@ func (db *DB) Create(model interface{}) {
 // Specify value for a field and return rows that match the value
 //be super general
 //stores the matching row in the struct provided as an argument.
-func (db *DB) Filter(result interface{}, field string, value string) {
-	rows, table_check := db.inner.Query("select * from " + TableName(result) + " WHERE " + field + " = '" + value + "';")
+func (db *DB) Filter2(result interface{}, field string, value string) {
+	rows, table_check := db.inner.Query("select * from " + TableName(result) + " WHERE " + ToSnakeCase(field) + " = '" + value + "';")
 	fmt.Println(rows, table_check)
+	fmt.Println(ColumnNames(result))
+
+}
+
+func (db *DB) Filter(result interface{}) {
+	// r := reflect.ValueOf(result).Type().Elem()
+	fmt.Println(TableName(result))
+	//fmt.Println(r.Interface())
+	//.Elem()).Interface()
+	tableName := TableName(result)
+	cols := ColumnNames(result)
+	fmt.Println("col names of result:", cols, tableName, TableName(result))
+	colTypes := ColumnTypes(result)
+	colVals := []interface{}{}
+
+	//var colValsStr []string
+	totalString := ""
+	ele := reflect.TypeOf(result).Elem()
+	for i := 0; i < ele.NumField()-1; i++ {
+		fmt.Println("population col vals", i)
+		fmt.Println("after checks", i)
+		colVals = append(colVals, reflect.ValueOf(result).Elem().Field(i).Interface())
+		fmt.Println("after checks", i)
+		//colValsStr = append(colValsStr, fmt.Sprintf("%v", colVals[len(colVals)-1]))
+		//fmt.Println("colnams/val", colNames[i], colVals[len(colVals)-1])
+		fmt.Println(colTypes[i])
+		if colTypes[i] == "string" {
+			totalString += cols[i] + "=" + fmt.Sprintf("'%v'", colVals[len(colVals)-1]) + " OR "
+		} else {
+			totalString += cols[i] + "=" + fmt.Sprintf("%v", colVals[len(colVals)-1]) + " OR "
+		}
+	}
+	fmt.Println("********", cols)
+	fmt.Println(colTypes[len(cols)-1])
+	if colTypes[len(cols)-1] == "string" {
+		totalString += cols[len(cols)-1] + "=" + fmt.Sprintf("'%v'", reflect.ValueOf(result).Elem().Field(len(cols)-1).Interface())
+	} else {
+		totalString += cols[len(cols)-1] + "=" + fmt.Sprintf("%v", reflect.ValueOf(result).Elem().Field(len(cols)-1).Interface())
+	}
+	//build or string
+
+	query := fmt.Sprintf("SELECT * FROM %v WHERE %v", tableName, totalString)
+	//fmt.Println(query)
+	//rows.Close()
+	//stmt, err := db.inner.Prepare(query)
+	//fmt.Println("stmt", stmt, err)
+	//fmt.Println(colVals...)
+	//res, errExec := stmt.Exec(colVals...) // also returns uniquw id
+
+	//query := "SELECT * FROM " + tableName
+	fmt.Println(query)
+	rows, err := db.inner.Query(query)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer rows.Close()
+	fmt.Println("ROWSSS:")
+	v := reflect.Indirect(reflect.New(reflect.ValueOf(result).Type().Elem()))
+	fields := make([]interface{}, len(cols))
+
+	for i := 0; i < len(cols); i++ {
+		t := v.Field(i).Type()
+		field := reflect.New(t).Interface()
+		fields[i] = field
+	}
+	fmt.Println("firlds", fields)
+	count := 0
+	end := make([]interface{}, 0)
+	for rows.Next() {
+		count++
+		rows.Scan(fields...)
+		resultRow := reflect.New(reflect.TypeOf(result).Elem())
+
+		val := reflect.Indirect(resultRow)
+		for i := 0; i < len(fields); i++ {
+			if val.Field(i).CanSet() {
+				val.Field(i).Set(reflect.ValueOf(fields[i]).Elem())
+			}
+		}
+		res := reflect.ValueOf(result).Elem()
+		fmt.Println("row", res, resultRow.Type())
+		fmt.Println(resultRow)
+		end = append(end, res)
+		//res.Set(reflect.Append(reflect.Indirect(reflect.ValueOf(result)), val))
+	}
+	fmt.Println("******", count, end)
 }
 
 // Query the database for the first n rows in a given table
@@ -316,7 +419,108 @@ func (db *DB) Query(result interface{}, query string) {
 }
 
 // Remove row from the database
-func (db *DB) Delete(result interface{}, field string, value string) {
+func (db *DB) Delete(model interface{}) {
+	fmt.Println("in delete")
+
+	rows, table_check := db.inner.Query("select * from " + TableName(model) + ";")
+	//fmt.Println("rows",rows, table_check)
+	fmt.Println("-------------------------------")
+	val := reflect.ValueOf(model).Elem().Kind()
+	fmt.Printf("%v  kind \n", val)
+
+	fmt.Printf("%v  value \n", reflect.ValueOf(model).Elem())
+	fmt.Printf("%v  type\n", reflect.TypeOf(model).Elem())
+
+	fmt.Println(val.String())
+	fmt.Println("-------------------------------")
+	// fmt.Println(db.inner)
+	fmt.Println("calling tablenane")
+	name := TableName(model)
+	fmt.Println("_________________________")
+	fmt.Println("select * from " + name + ";")
+
+	if table_check == nil {
+		for rows.Next() {
+			var full_name string
+			rows.Scan(&full_name)
+			fmt.Println("names:    ", full_name)
+		}
+
+		//fmt.Println(r.Interface())
+		//.Elem()).Interface()
+
+		cols := ColumnNames(model)
+		fmt.Println("col names of result:", cols, name)
+		colTypes := ColumnTypes(model)
+		colVals := []interface{}{}
+
+		//var colValsStr []string
+		totalString := ""
+		withVal := ""
+		word := ""
+		ele := reflect.TypeOf(model).Elem()
+		for i := 0; i < ele.NumField()-1; i++ {
+			fmt.Println("population col vals", i)
+			fmt.Println("after checks", i)
+
+			fmt.Println("after checks", i)
+			//colValsStr = append(colValsStr, fmt.Sprintf("%v", colVals[len(colVals)-1]))
+			//fmt.Println("colnams/val", colNames[i], colVals[len(colVals)-1])
+			fmt.Println(colTypes[i])
+			totalString += cols[i] + "=?" + " OR "
+			//if colTypes[i] == "string" {
+			word = fmt.Sprintf("%v", reflect.ValueOf(model).Elem().Field(i).Interface())
+
+			/*} else {
+				word = fmt.Sprintf("%v", reflect.ValueOf(model).Elem().Field(i).Interface())
+
+			}*/
+			colVals = append(colVals, word)
+			withVal += cols[i] + "=" + word + " OR "
+		}
+		fmt.Println("********", cols)
+		fmt.Println(colTypes[len(cols)-1])
+		totalString += cols[len(cols)-1] + "=?"
+		//if colTypes[len(cols)-1] == "string" {
+		word = fmt.Sprintf("%v", reflect.ValueOf(model).Elem().Field(len(cols)-1).Interface())
+		/*} else {
+			word = fmt.Sprintf("%v", reflect.ValueOf(model).Elem().Field(len(cols)-1).Interface())
+		}*/
+		colVals = append(colVals, word)
+		withVal += cols[len(cols)-1] + "=" + word
+		//build or string
+
+		query := fmt.Sprintf("DELETE FROM %v WHERE %v", name, totalString)
+		fullString := fmt.Sprintf("DELETE FROM %v WHERE %v", name, withVal)
+		fmt.Println(query)
+
+		//fmt.Println(query)
+		rows.Close()
+		stmt, err := db.inner.Prepare(query)
+		fmt.Println("stmt", stmt, err, colVals)
+		fmt.Println(colVals)
+		fmt.Println(colVals...)
+		res, errExec := stmt.Exec(colVals...) // also returns uniquw id
+		/*for res.Next() {
+			var full_name string
+			res.Scan(&full_name)
+			fmt.Println("names:    ", full_name)
+		}*/
+		num, err := res.RowsAffected()
+		if errExec != nil {
+			fmt.Println("0", err, num)
+		} else {
+			fmt.Println(num, err)
+		}
+		//query := "SELECT * FROM " + tableName
+		fmt.Println("placeholder string I have: ", query)
+		fmt.Println("full string it will be: ", fullString)
+		//rows, err := db.inner.Query(query)
+
+	} else {
+		fmt.Println("table not there")
+		log.Panic("table not there", table_check)
+	}
 
 }
 
