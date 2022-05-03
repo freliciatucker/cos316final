@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	"unicode"
 )
 
 // DB handle
@@ -28,6 +27,7 @@ func (db *DB) Close() error {
 	return db.inner.Close()
 }
 
+// source: https://stackoverflow.com/questions/56616196/how-to-convert-camel-case-string-to-snake-case
 var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
 var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
 
@@ -85,43 +85,13 @@ func ColumnTypes(v interface{}) []string {
 // TableName(&MyStruct{})    ==>  "my_struct"
 func TableName(result interface{}) string {
 	val := reflect.TypeOf(result).Elem().Name()
-	fmt.Printf("%v", val)
-	//fmt.Println(val.Name())
-	fmt.Printf("%v  value", reflect.ValueOf(result))
-	fmt.Printf("%v  type", reflect.TypeOf(result))
-	/*if reflect.TypeOf(result).Elem().Name() != reflect.Struct {
-		log.Panic("requires struct")
-	}*/
-
-	fmt.Println("passed!")
-	//str := val.String()
-
 	return ToSnakeCase(val)
 }
 
-// Find queries a database for all rows in a given table,
-// and stores all matching rows in the slice provided as an argument.
-
-// The argument `result` will be a pointer to an empty slice of models. // To be explicit, it will have type: *[]MyStruct,
-// where MyStruct is any arbitrary struct subject to the restrictions
-// discussed later in this document.
-// You may assume the slice referenced by `result` is empty.
-
-// Example usage to find all UserComment entries in the database:
-//    type UserComment struct = { ... }
-//    result := []UserComment{}
-//    db.Find(&result)
-func (db *DB) Find(result interface{}) {
-	r := reflect.New(reflect.ValueOf(result).Type().Elem().Elem()).Interface()
-	tableName := TableName(r)
+// Write rows resulting from SQL database query to result interface, which has
+// the type that interface r has.
+func writeRows(r interface{}, rows *sql.Rows, result interface{}) {
 	cols := ColumnNames(r)
-
-	query := "SELECT * FROM " + tableName
-	rows, err := db.inner.Query(query)
-	if err != nil {
-		log.Panic(err)
-	}
-	defer rows.Close()
 
 	v := reflect.Indirect(reflect.New(reflect.ValueOf(r).Type().Elem()))
 	fields := make([]interface{}, len(cols))
@@ -144,32 +114,35 @@ func (db *DB) Find(result interface{}) {
 		res := reflect.ValueOf(result).Elem()
 		res.Set(reflect.Append(reflect.Indirect(reflect.ValueOf(result)), val))
 	}
-	rows.Close()
-	fmt.Println("***find:", result)
-	/*val := reflect.ValueOf(result).Kind()
-	fmt.Printf("%v  kind", val)
-	fmt.Printf("%v  value", reflect.ValueOf(result))
-	fmt.Printf("%v  type", reflect.TypeOf(result))
-	fmt.Println(val.String())
-	*/
-	// str := val.String()
+}
 
-	// defer rows.Close()
+// Find queries a database for all rows in a given table,
+// and stores all matching rows in the slice provided as an argument.
 
-	// fields := make([]interface{}, len(cols))
-	// for i := 0; i < v.NumField; i++ {
-	// 	field := reflect.New(v.Field(i).Type()).Interface()
-	// 	fields[i] = field
-	// }
-	// for rows.Next() {
-	// 	err := rows.Scan(fields...)
-	// 	if err != nil {
-	// 		log.Fatal(err)
-	// 	}
-	// 	for i := 0; i < len(fields); i++ {
-	// 		fmt.Println(reflect.ValueOf(fields[i]).Elem())
-	// 	}
-	// }
+// The argument `result` will be a pointer to an empty slice of models. // To be explicit, it will have type: *[]MyStruct,
+// where MyStruct is any arbitrary struct subject to the restrictions
+// discussed later in this document.
+// You may assume the slice referenced by `result` is empty.
+
+// Example usage to find all UserComment entries in the database:
+//    type UserComment struct = { ... }
+//    result := []UserComment{}
+//    db.Find(&result)
+func (db *DB) Find(result interface{}) {
+	r := reflect.New(reflect.ValueOf(result).Type().Elem().Elem()).Interface()
+	tableName := TableName(r)
+
+
+	query := "SELECT * FROM " + tableName
+	rows, err := db.inner.Query(query)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer rows.Close()
+
+
+	writeRows(r, rows, result)
+
 }
 
 // First queries a database for the first row in a table,
@@ -188,14 +161,30 @@ func (db *DB) Find(result interface{}) {
 // with the argument), otherwise return true.
 func (db *DB) First(result interface{}) bool {
 	tableName := TableName(result)
-	query := "SELECT * FROM " + tableName + "LIMIT 1"
-	row := db.inner.QueryRow(query)
-	switch err := row.Scan(result); err {
-	case nil:
-		return true
-	default:
-		return false
+	cols := ColumnNames(result)
+
+	query := "SELECT * FROM " + tableName + " LIMIT 1"
+	rows, err := db.inner.Query(query)
+
+	v := reflect.ValueOf(result).Elem()
+	fields := make([]interface{}, len(cols))
+	for i := 0; i < len(cols); i++ {
+		t := v.Field(i).Type()
+		field := reflect.New(t).Interface()
+		fields[i] = field
 	}
+
+	if err != nil {
+		log.Panic(err)
+		return false
+	} else if rows.Next() {
+		rows.Scan(fields...)
+		for i := 0; i < len(fields); i++ {
+			v.Field(i).Set(reflect.ValueOf(fields[i]).Elem())
+		}
+		return true
+	}
+	return false
 }
 
 // Create adds the specified model to the appropriate database table.
@@ -307,83 +296,6 @@ func (db *DB) Create(model interface{}) {
 
 }
 
-func camelToArray(word string) []string {
-	allWords := []string{}
-
-	currentWord := ""
-	// endOfWord := false
-	beginnningOfWord := true
-	isUpper := false
-
-	for i := 0; i < len(word); i++ {
-		//currentWord += string(word[i])
-		if beginnningOfWord {
-			if i < len(word) {
-				isUpper = unicode.IsUpper(rune(word[i+1]))
-			}
-			beginnningOfWord = false
-			currentWord += string(word[i])
-		} else {
-
-			if isUpper && unicode.IsUpper(rune(word[i])) {
-				if i < len(word)-2 && !unicode.IsUpper(rune(word[i+2])) {
-					currentWord += string(word[i])
-					allWords = append(allWords, currentWord)
-					currentWord = ""
-					beginnningOfWord = true
-					continue
-
-				} else if i == len(word)-1 || unicode.IsUpper(rune(word[i+1])) {
-					currentWord += string(word[i])
-					continue
-
-				} else {
-					allWords = append(allWords, currentWord)
-					fmt.Println(currentWord)
-					currentWord = ""
-					beginnningOfWord = true
-					//allWords = append(allWords, currentWord)
-					continue
-				}
-			}
-
-			if !unicode.IsUpper(rune(word[i])) {
-				isUpper = false
-				currentWord += string(word[i])
-				continue
-			}
-			allWords = append(allWords, currentWord)
-			//fmt.Println(currentWord)
-			currentWord = ""
-			beginnningOfWord = true
-			i--
-			//allWords = append(allWords, currentWord)
-		}
-
-	}
-	allWords = append(allWords, currentWord)
-	return allWords
-}
-
-func arrayToUnderscore(arr []string) string {
-	fmt.Println("in to lower", len(arr), arr)
-	if len(arr) < 1 {
-		return ""
-	}
-	fmt.Println("in to lower2")
-	str := ""
-	for i := 0; i < len(arr)-1; i++ {
-		fmt.Print("in to lower3")
-		val := strings.ToLower(string(arr[i])) //+ string(arr[i][1:])
-		str += val + "_"
-		fmt.Println(str)
-	}
-	fmt.Println("in to lower4", str)
-	val := strings.ToLower(string(arr[len(arr)-1])) // + string(arr[len(arr)-1][1:])
-	str += val
-	return str
-}
-
 // Specify value for a field and return rows that match the value
 //be super general
 //stores the matching row in the struct provided as an argument.
@@ -480,12 +392,30 @@ func (db *DB) Filter(result interface{}) {
 
 // Query the database for the first n rows in a given table
 func (db *DB) TopN(result interface{}, n int) {
+	r := reflect.New(reflect.ValueOf(result).Type().Elem().Elem()).Interface()
+	tableName := TableName(r)
 
+	query := fmt.Sprintf("SELECT * FROM %s LIMIT %d", tableName, n)
+	rows, err := db.inner.Query(query)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer rows.Close()
+
+	writeRows(r, rows, result)
 }
 
 // Query and return database results for a user specified SQL query
 func (db *DB) Query(result interface{}, query string) {
+	r := reflect.New(reflect.ValueOf(result).Type().Elem().Elem()).Interface()
 
+	rows, err := db.inner.Query(query)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer rows.Close()
+
+	writeRows(r, rows, result)
 }
 
 // Remove row from the database

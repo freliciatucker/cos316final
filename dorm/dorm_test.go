@@ -45,7 +45,6 @@ func insertUsers(conn *sql.DB, users []User) {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("inserteed user", users)
 	}
 }
 
@@ -78,6 +77,7 @@ func TestString(t *testing.T) {
 
 }
 
+
 func TestColumnNames(t *testing.T) {
 	cols := ColumnNames(&User2{})
 	if len(cols) != 1 {
@@ -95,13 +95,48 @@ func TestFind(t *testing.T) {
 	defer db.Close()
 
 	results := []User{}
-	// fmt.Println("here")
-	// db.Find(&results)
-	ColumnNames(&results)
+	db.Find(&results)
 
-	// if len(results) != 1 {
-	// 	t.Errorf("Expected 1 users but found %d", len(results))
-	// }
+	if len(results) != 1 {
+		t.Errorf("Expected 1 users but found %d", len(results))
+		fmt.Println(results)
+	}
+}
+
+func TestQuery(t *testing.T) {
+	conn := connectSQL()
+	createUserTable(conn)
+	insertUsers(conn, MockUsers)
+
+	db := NewDB(conn)
+	defer db.Close()
+
+	results := []User{}
+	db.Query(&results, "SELECT * FROM user")
+
+	if len(results) != 1 {
+		t.Errorf("Expected 1 users but found %d", len(results))
+		fmt.Println(results)
+	}
+}
+
+func TestFirst(t *testing.T) {
+	conn := connectSQL()
+	createUserTable(conn)
+	insertUsers(conn, MockUsers)
+
+	db := NewDB(conn)
+	defer db.Close()
+
+	result := &User{}
+	db.First(result)
+
+	mockUser := User{FullName: "Test User1"}
+
+	if *result != mockUser {
+		t.Errorf("incorrect")
+		fmt.Println(*result)
+	}
 }
 
 func TestCreate(t *testing.T) {

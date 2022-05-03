@@ -199,6 +199,7 @@ func Test_Delete_MultipleCases(t *testing.T) {
 	rows.Close()
 }
 
+
 func Test_Delete_Panic(t *testing.T) {
 	conn := connectSQL()
 	createUserTable(conn)
@@ -243,6 +244,7 @@ func TestRevoke(t *testing.T) {
 
 	db := NewDB(conn)
 	defer db.Close()
+
 
 	fmt.Println("show database")
 	rows, _ := db.inner.Query("SELECT * FROM user")
