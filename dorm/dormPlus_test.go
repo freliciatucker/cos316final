@@ -4,6 +4,7 @@ import (
 	// "database/sql"
 	"fmt"
 	"log"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -14,14 +15,20 @@ import (
 func TestFilter(t *testing.T) {
 	conn := connectSQL()
 	createUserTable(conn)
-	insertUsers(conn, MockUsers2)
+	insertUsers(conn, MockUsers)
 
 	db := NewDB(conn)
 	defer db.Close()
 
 	results := []User{}
-	db.Filter(&results, &User{FullName: "Frelicia"})
-	fmt.Println(results)
+	db.Filter(&results, &User{FullName: "Frelicia Tucker"})
+	expectedResults := []User{
+		{FullName: "Frelicia Tucker"},
+	}
+	if !reflect.DeepEqual(results, expectedResults) {
+		t.Errorf("incorrect")
+		fmt.Println(results)
+	}
 }
 
 func Test_Filter_Multiple(t *testing.T) {
