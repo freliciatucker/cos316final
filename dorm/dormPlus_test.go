@@ -59,6 +59,47 @@ func Test_Filter_Panic(t *testing.T) {
 }
 
 func TestTopN(t *testing.T) {
+	conn := connectSQL()
+	createUserTable(conn)
+	insertUsers(conn, MockUsers)
+
+	db := NewDB(conn)
+	defer db.Close()
+
+	for n := 0; n <= len(MockUsers); n++ {
+		results := []User{}
+		db.TopN(&results, n)
+
+		if len(results) != n {
+			t.Errorf("Expected %d users but found %d", n, len(results))
+			fmt.Println(results)
+		}
+	}
+
+	results := []User{}
+	db.TopN(&results, len(MockUsers)+1)
+
+	if len(results) != len(MockUsers) {
+		t.Errorf("Expected %d users but found %d", len(MockUsers), len(results))
+		fmt.Println(results)
+	}
+}
+
+func TestQuery(t *testing.T) {
+	conn := connectSQL()
+	createUserTable(conn)
+	insertUsers(conn, MockUsers)
+
+	db := NewDB(conn)
+	defer db.Close()
+
+	results := []User{}
+	db.Query(&results, "select * from user where full_name < 'D'")
+
+	if len(results) != 3 {
+		t.Errorf("Expected 3 users but found %d", len(results))
+		fmt.Println(results)
+	}
 
 }
 
@@ -230,10 +271,6 @@ func TestRevoke(t *testing.T) {
 		fmt.Println("names:    ", full_name)
 	}
 	rows.Close()
-
-}
-
-func TestAlter(t *testing.T) {
 
 }
 

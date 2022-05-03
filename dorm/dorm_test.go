@@ -84,7 +84,12 @@ type User2 struct {
 }
 
 var MockUsers = []User{
-	User{FullName: "Test User1"},
+	User{FullName: "Alice Apple"},
+	User{FullName: "Bob Smith"},
+	User{FullName: "Kyra Acquah"},
+	User{FullName: "Frelicia Tucker"},
+	User{FullName: "Carol Crisp"},
+	User{FullName: "Devon Donald"},
 }
 
 var MockUsers2 = []User{
@@ -99,8 +104,8 @@ var MockUsers3 = []User2{
 
 func TestColumnNames(t *testing.T) {
 	cols := ColumnNames(&User2{})
-	if len(cols) != 1 {
-		t.Errorf("Expected 1 col but found %d", len(cols))
+	if len(cols) != 2 {
+		t.Errorf("Expected 2 col but found %d", len(cols))
 		fmt.Println(cols)
 	}
 }
@@ -116,25 +121,8 @@ func TestFind(t *testing.T) {
 	results := []User{}
 	db.Find(&results)
 
-	if len(results) != 1 {
-		t.Errorf("Expected 1 users but found %d", len(results))
-		fmt.Println(results)
-	}
-}
-
-func TestQuery(t *testing.T) {
-	conn := connectSQL()
-	createUserTable(conn)
-	insertUsers(conn, MockUsers)
-
-	db := NewDB(conn)
-	defer db.Close()
-
-	results := []User{}
-	db.Query(&results, "SELECT * FROM user")
-
-	if len(results) != 1 {
-		t.Errorf("Expected 1 users but found %d", len(results))
+	if len(results) != len(MockUsers) {
+		t.Errorf("Expected %d users but found %d", len(MockUsers), len(results))
 		fmt.Println(results)
 	}
 }
@@ -150,7 +138,7 @@ func TestFirst(t *testing.T) {
 	result := &User{}
 	db.First(result)
 
-	mockUser := User{FullName: "Test User1"}
+	mockUser := User{FullName: "Alice Apple"}
 
 	if *result != mockUser {
 		t.Errorf("incorrect")
